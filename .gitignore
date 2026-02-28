@@ -1,0 +1,5 @@
+# Build / test artifacts
+TestResults/
+
+# GitHub agents
+.github/agents/

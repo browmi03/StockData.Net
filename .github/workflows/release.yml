@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-test-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore StockData.Net.sln
+
+    - name: Build solution
+      run: dotnet build StockData.Net.sln --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test StockData.Net.sln --configuration Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+    - name: Compute release metadata
+      id: release_meta
+      shell: bash
+      run: |
+        REF_NAME="${GITHUB_REF_NAME}"
+
+        if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+          VERSION="${REF_NAME#v}"
+
+          if [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            PRERELEASE="false"
+            RELEASE_CHANNEL="stable"
+          elif [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$ ]]; then
+            PRERELEASE="true"
+            RELEASE_CHANNEL="preview"
+          else
+            echo "Tag '$REF_NAME' is invalid."
+            echo "Use stable tags like v1.2.3 or preview tags like v1.2.3-rc.1"
+            exit 1
+          fi
+        else
+          VERSION="1.0.0-dev.${GITHUB_RUN_NUMBER}"
+          PRERELEASE="true"
+          RELEASE_CHANNEL="dev"
+        fi
+
+        echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+        echo "PRERELEASE=${PRERELEASE}" >> "$GITHUB_ENV"
+        echo "RELEASE_CHANNEL=${RELEASE_CHANNEL}" >> "$GITHUB_ENV"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+        echo "release_channel=${RELEASE_CHANNEL}" >> "$GITHUB_OUTPUT"
+
+    - name: Publish MCP server binary
+      shell: bash
+      run: |
+        project="StockData.Net/StockData.Net.McpServer/StockData.Net.McpServer.csproj"
+        rid="win-x64"
+
+        mkdir -p publish
+
+        out_dir="publish/StockData.Net.McpServer-${rid}"
+        dotnet publish "$project" \
+          --configuration Release \
+          --runtime "$rid" \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -p:IncludeNativeLibrariesForSelfExtract=true \
+          -p:Version="$VERSION" \
+          -p:InformationalVersion="$VERSION+sha.${GITHUB_SHA::7}" \
+          --output "$out_dir"
+
+        cd publish
+        zip -r "StockData.Net.McpServer-${VERSION}-${rid}.zip" "StockData.Net.McpServer-${rid}"
+        cd - > /dev/null
+
+    - name: Upload published artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: mcpserver-publish-${{ steps.release_meta.outputs.version }}
+        path: publish/*.zip
+
+    - name: Create GitHub release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v2
+      with:
+        prerelease: ${{ steps.release_meta.outputs.prerelease == 'true' }}
+        name: StockData.Net MCP Server v${{ steps.release_meta.outputs.version }}
+        files: publish/*.zip
+        body: |
+          ## StockData.Net MCP Server
+
+          Release channel: `${{ steps.release_meta.outputs.release_channel }}`
+          Version: `${{ steps.release_meta.outputs.version }}`
+
+          ### Download
+          - `StockData.Net.McpServer-${{ steps.release_meta.outputs.version }}-win-x64.zip`
+
+          ### Setup in VS Code
+          Extract the ZIP and configure in VS Code `settings.json`:
+          ```json
+          {
+            "github.copilot.chat.mcp.servers": {
+              "yahoo-finance": {
+                "command": "C:/Tools/StockData.Net/StockData.Net.McpServer.exe",
+                "args": []
+              }
+            }
+          }
+          ```
+
+          See [Deployment Guide](https://github.com/your-org/FinanceMCP/blob/main/docs/deployment/DEPLOYMENT_GUIDE.md) for complete instructions.
