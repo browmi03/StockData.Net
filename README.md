@@ -2,7 +2,7 @@
 
 **Access comprehensive financial market data directly in your AI assistant using Model Context Protocol (MCP).**
 
-StockData.Net is an MCP server that brings Yahoo Finance data to GitHub Copilot, Claude, VS Code, and other AI assistants. Ask questions about stock prices, financial statements, options data, and more—all from your favorite AI tool.
+StockData.Net is an MCP server that brings comprehensive financial market data to GitHub Copilot, Claude, VS Code, and other AI assistants. Ask questions about stock prices, financial statements, options data, and more—all from your favorite AI tool.
 
 **Last Updated:** 2026-02-28
 
@@ -50,7 +50,7 @@ StockData.Net is an MCP server that brings Yahoo Finance data to GitHub Copilot,
 - **🔒 Secure & Private**
   - All communication encrypted with HTTPS
   - No API keys or credentials exposed
-  - Works with Yahoo Finance's public data
+  - Works with StockData.Net's financial market data
   - Your queries remain private between you and your AI assistant
 
 ---
@@ -124,7 +124,7 @@ Once configured, ask your AI assistant:
 ```json
 {
   "github.copilot.chat.mcp.servers": {
-    "yahoo-finance": {
+    "StockData": {
       "command": "C:/Tools/StockData.Net/StockData.Net.McpServer.exe",
       "args": []
     }
@@ -208,7 +208,7 @@ Download the most recent `StockData.Net.McpServer-{VERSION}-win-x64.zip` for you
 
 ### Secure by Design
 
-- ✅ **HTTPS Only** - All communication with Yahoo Finance is encrypted
+- ✅ **HTTPS Only** - All communication with StockData.Net is encrypted
 - ✅ **No Credentials** - No API keys needed; uses public market data
 - ✅ **Input Validation** - All queries are validated before processing
 - ✅ **Safe Error Messages** - No sensitive information in error messages
@@ -217,7 +217,7 @@ Download the most recent `StockData.Net.McpServer-{VERSION}-win-x64.zip` for you
 
 - Your queries are between you and your AI assistant
 - No data is logged or stored by this MCP server
-- Yahoo Finance data is public market data
+- StockData.Net data is public market data
 - All communication flows through secure HTTPS connections
 
 For more details, see [docs/security/security-summary.md](docs/security/security-summary.md).
@@ -248,9 +248,9 @@ See the LICENSE file in the repository for details.
 **This project is for educational and research purposes.**
 
 - Always verify important financial information from official sources
-- Yahoo Finance data is provided "as-is"
+- StockData.Net data is provided "as-is"
 - The authors are not responsible for any financial or investment decisions made using this software
-- Use responsibly and in compliance with Yahoo Finance's terms of service
+- Use responsibly and in compliance with financial data providers' terms of service
 - Past performance does not guarantee future results
 
 ---

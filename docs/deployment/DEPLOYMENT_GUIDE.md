@@ -73,7 +73,7 @@ Listening for MCP requests on stdio...
 ```json
 {
   "github.copilot.chat.mcp.servers": {
-    "yahoo-finance": {
+    "StockData": {
       "command": "C:\\Tools\\StockData.Net\\StockData.Net.McpServer.exe",
       "args": []
     }
@@ -162,7 +162,7 @@ If you prefer **not to use a compiled binary**, you can run the MCP server direc
 ```json
 {
   "github.copilot.chat.mcp.servers": {
-    "yahoo-finance": {
+    "StockData": {
       "command": "dotnet",
       "args": [
         "run",

@@ -64,7 +64,7 @@ public class StockDataMcpServerTests
         
         var resultJson = JsonSerializer.Serialize(response.Result);
         Assert.IsTrue(resultJson.Contains("2024-11-05"));
-        Assert.IsTrue(resultJson.Contains("yahoo-finance-mcp"));
+        Assert.IsTrue(resultJson.Contains("StockData-mcp"));
     }
 
     [TestMethod]

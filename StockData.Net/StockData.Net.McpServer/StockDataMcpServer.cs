@@ -17,7 +17,7 @@ public class StockDataMcpServer
 {
     private readonly StockDataProviderRouter _router;
     private readonly JsonSerializerOptions _jsonOptions;
-    private const string ServerName = "yahoo-finance-mcp";
+    private const string ServerName = "StockData-mcp";
     private const string ServerVersion = "1.0.0";
 
     public StockDataMcpServer(StockDataProviderRouter router)
