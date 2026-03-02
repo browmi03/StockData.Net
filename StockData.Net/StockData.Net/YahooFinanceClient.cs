@@ -146,7 +146,22 @@ public class YahooFinanceClient : IYahooFinanceClient
             response.EnsureSuccessStatusCode();
             
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            var jsonData = JsonNode.Parse(content);
+            
+            // Validate that the response is actually JSON before parsing
+            if (string.IsNullOrWhiteSpace(content) || (!content.TrimStart().StartsWith("{") && !content.TrimStart().StartsWith("[")))
+            {
+                return $"Error: Invalid response from Yahoo Finance for {ticker}";
+            }
+            
+            JsonNode? jsonData;
+            try
+            {
+                jsonData = JsonNode.Parse(content);
+            }
+            catch (JsonException)
+            {
+                return $"Error: Invalid JSON response from Yahoo Finance for {ticker}";
+            }
             
             var result = jsonData?["chart"]?["result"]?[0];
             if (result == null)
@@ -655,7 +670,11 @@ public class YahooFinanceClient : IYahooFinanceClient
                 return $"Error: Invalid date format. Please use YYYY-MM-DD format.";
             }
 
-            var timestamp = new DateTimeOffset(date.Date.AddHours(16)).ToUnixTimeSeconds(); // 4 PM ET
+            // Convert date to Unix timestamp at 4 PM ET
+            var estZone = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+            var dateTimeEst = new DateTime(date.Year, date.Month, date.Day, 16, 0, 0);
+            var dateTimeUtc = TimeZoneInfo.ConvertTime(dateTimeEst, estZone, TimeZoneInfo.Utc);
+            var timestamp = new DateTimeOffset(dateTimeUtc).ToUnixTimeSeconds();
             var url = $"{BaseUrl}/v7/finance/options/{ticker}?date={timestamp}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
@@ -670,10 +689,25 @@ public class YahooFinanceClient : IYahooFinanceClient
                 return $"Company ticker {ticker} not found.";
             }
 
+            // Try to find the options array - could be at result.options[0] or directly at result
+            JsonArray? optionArray = null;
+            
+            // First try: result.options[0].calls/puts (old structure)
             var options = result["options"]?[0];
-            var optionArray = optionType == OptionType.Calls 
-                ? options?["calls"]?.AsArray() 
-                : options?["puts"]?.AsArray();
+            if (options != null)
+            {
+                optionArray = optionType == OptionType.Calls 
+                    ? options["calls"]?.AsArray() 
+                    : options["puts"]?.AsArray();
+            }
+            
+            // Second try: result.calls/puts directly (newer structure)
+            if (optionArray == null || optionArray.Count == 0)
+            {
+                optionArray = optionType == OptionType.Calls 
+                    ? result["calls"]?.AsArray() 
+                    : result["puts"]?.AsArray();
+            }
 
             if (optionArray == null || optionArray.Count == 0)
             {

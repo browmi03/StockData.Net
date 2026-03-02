@@ -229,16 +229,17 @@ public class StockDataProviderRouterTests
     public async Task GetOptionChainAsync_CallsPrimaryProvider()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var expectedResult = "option chain";
-        _mockProvider.Setup(p => p.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls, It.IsAny<CancellationToken>()))
+        _mockProvider.Setup(p => p.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
 
         // Act
-        var result = await _router.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls);
+        var result = await _router.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.AreEqual(expectedResult, result);
-        _mockProvider.Verify(p => p.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
+        _mockProvider.Verify(p => p.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
