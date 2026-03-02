@@ -41,7 +41,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.GetArrayLength() > 0, "Should return at least one data point");
+        Assert.IsGreaterThan(0, jsonDocument.RootElement.GetArrayLength(), "Should return at least one data point");
         
         // Verify expected properties exist
         var firstElement = jsonDocument.RootElement[0];
@@ -101,7 +101,7 @@ public class StockDataIntegrationTests
             "Should return formatted market news with Title and Publisher");
         
         // Market news should contain timestamps
-        Assert.IsTrue(result.Contains("Published:"), 
+        Assert.Contains("Published:", result, 
             "Should include publication timestamps");
     }
 
@@ -118,7 +118,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON array
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
         
         // Apple has historical dividends, so we should get data
         if (jsonDocument.RootElement.GetArrayLength() > 0)
@@ -141,7 +141,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON array
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
         
         if (jsonDocument.RootElement.GetArrayLength() > 0)
         {
@@ -163,7 +163,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -179,7 +179,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -195,7 +195,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -211,7 +211,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -227,8 +227,8 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON array of dates
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
-        Assert.IsTrue(jsonDocument.RootElement.GetArrayLength() > 0, "Should have at least one expiration date");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
+        Assert.IsGreaterThan(0, jsonDocument.RootElement.GetArrayLength(), "Should have at least one expiration date");
         
         // Verify dates are in correct format (YYYY-MM-DD)
         var firstDate = jsonDocument.RootElement[0].GetString();
@@ -261,7 +261,7 @@ public class StockDataIntegrationTests
             
             // Verify it's valid JSON
             var jsonDocument = JsonDocument.Parse(result);
-            Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+            Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
         }
     }
 
@@ -278,7 +278,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -294,7 +294,7 @@ public class StockDataIntegrationTests
         
         // Verify it's valid JSON
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, "Should return JSON array");
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, "Should return JSON array");
     }
 
     [TestMethod]
@@ -354,7 +354,7 @@ public class StockDataIntegrationTests
         try
         {
             var jsonDocument = JsonDocument.Parse(result);
-            Assert.IsTrue(jsonDocument.RootElement.GetArrayLength() > 0, $"Should return data for period {period}");
+            Assert.IsGreaterThan(0, jsonDocument.RootElement.GetArrayLength(), $"Should return data for period {period}");
         }
         catch (JsonException ex)
         {
@@ -381,7 +381,7 @@ public class StockDataIntegrationTests
         AssertNoApiError(result, nameof(GetFinancialStatementAsync_AllTypes_Work));
         
         var jsonDocument = JsonDocument.Parse(result);
-        Assert.IsTrue(jsonDocument.RootElement.ValueKind == JsonValueKind.Array, 
+        Assert.AreEqual(JsonValueKind.Array, jsonDocument.RootElement.ValueKind, 
             $"Should return JSON array for type {type}");
     }
 

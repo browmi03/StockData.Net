@@ -44,8 +44,8 @@ public class NewsAggregationMcpServerTests
 
         Assert.IsNull(response.Error);
         var responseJson = JsonSerializer.Serialize(response.Result);
-        Assert.IsTrue(responseJson.Contains("Apple Earnings Beat Expectations"));
-        Assert.IsTrue(responseJson.Contains("Sources: Bloomberg, Reuters"));
+        Assert.Contains("Apple Earnings Beat Expectations", responseJson);
+        Assert.Contains("Sources: Bloomberg, Reuters", responseJson);
     }
 
     private static McpConfiguration CreateConfiguration()
