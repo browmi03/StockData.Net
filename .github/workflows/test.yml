@@ -52,3 +52,4 @@ jobs:
         files: '**/test-results.trx'
         check_name: Unit Test Results
         comment_title: Test Results
+        comment_mode: off
