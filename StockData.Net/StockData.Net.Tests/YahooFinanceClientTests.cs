@@ -263,7 +263,7 @@ public class YahooFinanceClientTests
                             {
                                 new
                                 {
-                                    endDate = new { fmt = "2023-12-31" },
+                                    endDate = new { fmt = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd") },
                                     totalRevenue = new { raw = 1000000000L },
                                     netIncome = new { raw = 100000000L }
                                 }
@@ -386,7 +386,8 @@ public class YahooFinanceClientTests
         SetupMockHttpResponse(HttpStatusCode.OK, JsonSerializer.Serialize(mockResponse));
 
         // Act
-        var result = await _client.GetOptionChainAsync("AAPL", "2024-01-19", OptionType.Calls);
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
+        var result = await _client.GetOptionChainAsync("AAPL", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.IsNotNull(result);
@@ -787,6 +788,7 @@ public class YahooFinanceClientTests
     public async Task GetOptionChainAsync_HttpException_ReturnsErrorMessage()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         _mockHttpHandler.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
@@ -795,7 +797,7 @@ public class YahooFinanceClientTests
             .ThrowsAsync(new HttpRequestException("Gateway timeout"));
 
         // Act
-        var result = await _client.GetOptionChainAsync("META", "2024-01-19", OptionType.Puts);
+        var result = await _client.GetOptionChainAsync("META", expirationDate, OptionType.Puts);
 
         // Assert
         Assert.IsTrue(result.Contains("Error"));
@@ -934,11 +936,12 @@ public class YahooFinanceClientTests
     public async Task GetOptionChainAsync_InvalidTicker_ReturnsNotFound()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var mockResponse = new { optionChain = new { result = (object[]?)null } };
         SetupMockHttpResponse(HttpStatusCode.OK, JsonSerializer.Serialize(mockResponse));
 
         // Act
-        var result = await _client.GetOptionChainAsync("FAKE", "2024-01-19", OptionType.Calls);
+        var result = await _client.GetOptionChainAsync("FAKE", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.IsTrue(result.Contains("not found"));
@@ -1017,7 +1020,8 @@ public class YahooFinanceClientTests
         SetupMockHttpResponse(HttpStatusCode.OK, JsonSerializer.Serialize(mockResponse));
 
         // Act
-        var result = await _client.GetOptionChainAsync("AAPL", "2024-01-19", OptionType.Calls);
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
+        var result = await _client.GetOptionChainAsync("AAPL", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.IsTrue(result.Contains("No options available") || result.Contains("GetOptionExpirationDatesAsync"));
@@ -1054,7 +1058,7 @@ public class YahooFinanceClientTests
                             {
                                 new
                                 {
-                                    endDate = new { fmt = "2023-12-31" },
+                                    endDate = new { fmt = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd") },
                                     totalRevenue = new { raw = 50000000L }
                                 }
                             }
@@ -1065,7 +1069,7 @@ public class YahooFinanceClientTests
                             {
                                 new
                                 {
-                                    endDate = new { fmt = "2023-12-31" },
+                                    endDate = new { fmt = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd") },
                                     totalAssets = new { raw = 100000000L }
                                 }
                             }
@@ -1076,7 +1080,7 @@ public class YahooFinanceClientTests
                             {
                                 new
                                 {
-                                    endDate = new { fmt = "2023-12-31" },
+                                    endDate = new { fmt = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd") },
                                     operatingCashflow = new { raw = 20000000L }
                                 }
                             }

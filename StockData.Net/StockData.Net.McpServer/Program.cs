@@ -17,10 +17,7 @@ var config = await configLoader.LoadConfigurationAsync(configPath);
 builder.Services.AddSingleton(config);
 builder.Services.AddSingleton<IConfigurationLoader>(configLoader);
 
-// Register HTTP client
-builder.Services.AddHttpClient();
-
-// Register Yahoo Finance client
+// Register Yahoo Finance client (creates its own HttpClient with proper cookie handling)
 builder.Services.AddSingleton<IYahooFinanceClient, YahooFinanceClient>();
 
 // Register providers

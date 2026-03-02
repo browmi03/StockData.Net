@@ -22,10 +22,13 @@ public class NewsDeduplicatorTests
     {
         var deduplicator = new NewsDeduplicator();
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         var providerResponses = new Dictionary<string, string>
         {
-            ["provider_a"] = BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"),
-            ["provider_b"] = BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00")
+            ["provider_a"] = BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate1),
+            ["provider_b"] = BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2)
         };
 
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
@@ -33,7 +36,7 @@ public class NewsDeduplicatorTests
         Assert.AreEqual(1, CountArticles(result));
         Assert.IsTrue(result.Contains("Sources: Bloomberg, Reuters"));
         Assert.IsTrue(result.Contains("Merged Count: 1"));
-        Assert.IsTrue(result.Contains("Published: 2026-02-27 09:30:00"));
+        Assert.IsTrue(result.Contains($"Published: {newsDate2}"));
     }
 
     [TestMethod]
@@ -41,10 +44,13 @@ public class NewsDeduplicatorTests
     {
         var deduplicator = new NewsDeduplicator();
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         var providerResponses = new Dictionary<string, string>
         {
-            ["internal_provider_alpha"] = BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"),
-            ["internal_provider_beta"] = BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00")
+            ["internal_provider_alpha"] = BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate1),
+            ["internal_provider_beta"] = BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2)
         };
 
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
@@ -59,10 +65,13 @@ public class NewsDeduplicatorTests
     {
         var deduplicator = new NewsDeduplicator();
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         var providerResponses = new Dictionary<string, string>
         {
-            ["provider_a"] = BuildArticle("Apple Announces New Product", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"),
-            ["provider_b"] = BuildArticle("Microsoft Cloud Revenue Expands", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00")
+            ["provider_a"] = BuildArticle("Apple Announces New Product", "Reuters", "https://example.com/a", newsDate1),
+            ["provider_b"] = BuildArticle("Microsoft Cloud Revenue Expands", "Bloomberg", "https://example.com/b", newsDate2)
         };
 
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
@@ -85,10 +94,13 @@ public class NewsDeduplicatorTests
         var articleB = new NewsArticle { Title = titleB };
         var similarity = strategy.CalculateSimilarity(articleA, articleB, _config);
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         var providerResponses = new Dictionary<string, string>
         {
-            ["provider_a"] = BuildArticle(titleA, "Reuters", "https://example.com/a", "2026-02-27 10:00:00"),
-            ["provider_b"] = BuildArticle(titleB, "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00")
+            ["provider_a"] = BuildArticle(titleA, "Reuters", "https://example.com/a", newsDate1),
+            ["provider_b"] = BuildArticle(titleB, "Bloomberg", "https://example.com/b", newsDate2)
         };
 
         var atThresholdConfig = CloneConfig(similarity);
@@ -111,13 +123,17 @@ public class NewsDeduplicatorTests
         var config = CloneConfig(_config.SimilarityThreshold);
         config.MaxArticlesForComparison = 2;
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddHours(-1).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate3 = DateTime.UtcNow.AddDays(-2).AddHours(-2).ToString("yyyy-MM-dd HH:mm:ss");
+
         var providerResponses = new Dictionary<string, string>
         {
             ["provider_a"] = string.Join("\n\n", new[]
             {
-                BuildArticle("A", "P1", "https://example.com/1", "2026-02-27 10:00:00"),
-                BuildArticle("B", "P1", "https://example.com/2", "2026-02-27 09:00:00"),
-                BuildArticle("C", "P1", "https://example.com/3", "2026-02-27 08:00:00")
+                BuildArticle("A", "P1", "https://example.com/1", newsDate1),
+                BuildArticle("B", "P1", "https://example.com/2", newsDate2),
+                BuildArticle("C", "P1", "https://example.com/3", newsDate3)
             })
         };
 
@@ -176,12 +192,13 @@ public class NewsDeduplicatorTests
 
     private static string BuildBatchArticles(string prefix, int count)
     {
+        var baseDate = DateTime.UtcNow.AddDays(-2);
         var articles = Enumerable.Range(1, count)
             .Select(i => BuildArticle(
                 $"{prefix} headline {i}",
                 $"Publisher {prefix}",
                 $"https://example.com/{prefix.ToLowerInvariant()}/{i}",
-                $"2026-02-27 10:{i % 60:00}:00"));
+                baseDate.AddMinutes(i).ToString("yyyy-MM-dd HH:mm:ss")));
 
         return string.Join("\n\n", articles);
     }

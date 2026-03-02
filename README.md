@@ -125,6 +125,7 @@ Once configured, ask your AI assistant:
 {
   "github.copilot.chat.mcp.servers": {
     "StockData": {
+      "type": "stdio",
       "command": "C:/Tools/StockData.Net/StockData.Net.McpServer.exe",
       "args": []
     }
