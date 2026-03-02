@@ -167,11 +167,11 @@ public class FailoverTests
         catch (ProviderFailoverException ex)
         {
             Assert.AreEqual("StockInfo", ex.DataType);
-            Assert.AreEqual(3, ex.ProviderErrors.Count);
+            Assert.HasCount(3, ex.ProviderErrors);
             Assert.IsTrue(ex.ProviderErrors.ContainsKey("primary_provider"));
             Assert.IsTrue(ex.ProviderErrors.ContainsKey("fallback_1"));
             Assert.IsTrue(ex.ProviderErrors.ContainsKey("fallback_2"));
-            Assert.AreEqual(3, ex.AttemptedProviders.Count);
+            Assert.HasCount(3, ex.AttemptedProviders);
         }
     }
 
@@ -209,7 +209,7 @@ public class FailoverTests
 
         // Assert - Should complete well under 5 seconds (NFR-2 requirement)
         Assert.AreEqual("success", result);
-        Assert.IsTrue(duration.TotalSeconds < 5, $"Failover took {duration.TotalSeconds}s, expected < 5s");
+        Assert.IsLessThan(5, duration.TotalSeconds, $"Failover took {duration.TotalSeconds}s, expected < 5s");
     }
 
     [TestMethod]

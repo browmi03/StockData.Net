@@ -64,8 +64,8 @@ public class StockDataMcpServerTests
         
         var resultJson = JsonSerializer.Serialize(response.Result);
         // Protocol version should match the MCP specification date format "YYYY-MM-DD"
-        Assert.IsTrue(resultJson.Contains("protocolVersion"));
-        Assert.IsTrue(resultJson.Contains("StockData-mcp"));
+        Assert.Contains("protocolVersion", resultJson);
+        Assert.Contains("StockData-mcp", resultJson);
     }
 
     [TestMethod]
@@ -88,16 +88,16 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response.Result);
         
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.IsTrue(resultJson.Contains("get_historical_stock_prices"));
-        Assert.IsTrue(resultJson.Contains("get_stock_info"));
-        Assert.IsTrue(resultJson.Contains("get_yahoo_finance_news"));
-        Assert.IsTrue(resultJson.Contains("get_market_news"));
-        Assert.IsTrue(resultJson.Contains("get_stock_actions"));
-        Assert.IsTrue(resultJson.Contains("get_financial_statement"));
-        Assert.IsTrue(resultJson.Contains("get_holder_info"));
-        Assert.IsTrue(resultJson.Contains("get_option_expiration_dates"));
-        Assert.IsTrue(resultJson.Contains("get_option_chain"));
-        Assert.IsTrue(resultJson.Contains("get_recommendations"));
+        Assert.Contains("get_historical_stock_prices", resultJson);
+        Assert.Contains("get_stock_info", resultJson);
+        Assert.Contains("get_yahoo_finance_news", resultJson);
+        Assert.Contains("get_market_news", resultJson);
+        Assert.Contains("get_stock_actions", resultJson);
+        Assert.Contains("get_financial_statement", resultJson);
+        Assert.Contains("get_holder_info", resultJson);
+        Assert.Contains("get_option_expiration_dates", resultJson);
+        Assert.Contains("get_option_chain", resultJson);
+        Assert.Contains("get_recommendations", resultJson);
     }
 
     [TestMethod]
@@ -118,7 +118,7 @@ public class StockDataMcpServerTests
         Assert.AreEqual(3, response.Id);
         Assert.IsNotNull(response.Error);
         Assert.AreEqual(-32603, response.Error.Code);
-        Assert.IsTrue(response.Error.Message.Contains("Unknown method"));
+        Assert.Contains("Unknown method", response.Error.Message);
     }
 
     #endregion
@@ -159,7 +159,7 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
         var resultJson = JsonSerializer.Serialize(response.Result);
         // The response is wrapped in {content: [{type: "text", text: "..."}]}
-        Assert.IsTrue(resultJson.Contains("Date"));
+        Assert.Contains("Date", resultJson);
     }
 
     [TestMethod]
@@ -481,7 +481,7 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
         Assert.AreEqual(-32603, response.Error.Code);
-        Assert.IsTrue(response.Error.Message.Contains("Missing params"));
+        Assert.Contains("Missing params", response.Error.Message);
     }
 
     [TestMethod]
@@ -506,7 +506,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.IsTrue(response.Error.Message.Contains("Unknown tool"));
+        Assert.Contains("Unknown tool", response.Error.Message);
     }
 
     [TestMethod]
@@ -532,7 +532,7 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
         Assert.IsTrue(response.Error.Message.Contains("Missing required parameter") || 
-                      response.Error.Message.Contains("ticker"));
+                      response.Error.Message.Contains("ticker")); // Multiple conditions in OR
     }
 
     [TestMethod]
@@ -560,7 +560,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.IsTrue(response.Error.Message.Contains("Invalid financial statement type"));
+        Assert.Contains("Invalid financial statement type", response.Error.Message);
     }
 
     [TestMethod]
@@ -588,7 +588,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.IsTrue(response.Error.Message.Contains("Invalid holder type"));
+        Assert.Contains("Invalid holder type", response.Error.Message);
     }
 
     [TestMethod]
@@ -618,7 +618,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.IsTrue(response.Error.Message.Contains("Invalid option type"));
+        Assert.Contains("Invalid option type", response.Error.Message);
     }
 
     [TestMethod]
@@ -646,7 +646,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.IsTrue(response.Error.Message.Contains("Invalid recommendation type"));
+        Assert.Contains("Invalid recommendation type", response.Error.Message);
     }
 
     #endregion
@@ -1135,7 +1135,7 @@ public class StockDataMcpServerTests
 
         // Assert
         Assert.AreEqual(errorMessage, result);
-        Assert.IsTrue(result.Contains("Error"));
+        Assert.Contains("Error", result);
     }
 
     [TestMethod]

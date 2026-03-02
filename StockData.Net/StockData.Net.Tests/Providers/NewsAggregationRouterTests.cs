@@ -28,7 +28,7 @@ public class NewsAggregationRouterTests
         var result = await router.GetNewsAsync("AAPL");
 
         Assert.AreEqual(1, CountArticles(result));
-        Assert.IsTrue(result.Contains("Sources: Bloomberg, Reuters"));
+        Assert.Contains("Sources: Bloomberg, Reuters", result);
         primary.Verify(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
         secondary.Verify(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -51,7 +51,7 @@ public class NewsAggregationRouterTests
         var result = await router.GetNewsAsync("AAPL");
 
         Assert.AreEqual(1, CountArticles(result));
-        Assert.IsTrue(result.Contains("Apple Earnings Beat Expectations"));
+        Assert.Contains("Apple Earnings Beat Expectations", result);
     }
 
     [TestMethod]
@@ -73,7 +73,7 @@ public class NewsAggregationRouterTests
         var result = await router.GetNewsAsync("AAPL");
 
         Assert.AreEqual(2, CountArticles(result));
-        Assert.IsFalse(result.Contains("Sources:"));
+        Assert.DoesNotContain("Sources:", result);
     }
 
     [TestMethod]
@@ -120,7 +120,7 @@ public class NewsAggregationRouterTests
         var result = await router.GetNewsAsync("AAPL");
 
         Assert.AreEqual(2, CountArticles(result));
-        Assert.IsFalse(result.Contains("Sources:"));
+        Assert.DoesNotContain("Sources:", result);
     }
 
     private static StockDataProviderRouter CreateRouter(

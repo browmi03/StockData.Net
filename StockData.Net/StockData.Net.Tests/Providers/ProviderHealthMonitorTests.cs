@@ -53,7 +53,7 @@ public class ProviderHealthMonitorTests
         Assert.AreEqual(2, status.TotalRequests);
         Assert.AreEqual(2, status.SuccessfulRequests);
         Assert.AreEqual(0, status.FailedRequests);
-        Assert.IsTrue(status.AverageResponseTimeMs > 0); // Average response time should be positive
+        Assert.IsGreaterThan(0, status.AverageResponseTimeMs); // Average response time should be positive
         Assert.IsNotNull(status.LastSuccessAt);
     }
 
@@ -152,7 +152,7 @@ public class ProviderHealthMonitorTests
         var allStatus = _healthMonitor.GetAllHealthStatus();
 
         // Assert
-        Assert.AreEqual(3, allStatus.Count); // Three providers tracked
+        Assert.HasCount(3, allStatus); // Three providers tracked
         Assert.IsTrue(allStatus.ContainsKey("provider_1"));
         Assert.IsTrue(allStatus.ContainsKey("provider_2"));
         Assert.IsTrue(allStatus.ContainsKey("provider_3"));

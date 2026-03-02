@@ -34,9 +34,9 @@ public class NewsDeduplicatorTests
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
 
         Assert.AreEqual(1, CountArticles(result));
-        Assert.IsTrue(result.Contains("Sources: Bloomberg, Reuters"));
-        Assert.IsTrue(result.Contains("Merged Count: 1"));
-        Assert.IsTrue(result.Contains($"Published: {newsDate2}"));
+        Assert.Contains("Sources: Bloomberg, Reuters", result);
+        Assert.Contains("Merged Count: 1", result);
+        Assert.Contains($"Published: {newsDate2}", result);
     }
 
     [TestMethod]
@@ -55,9 +55,9 @@ public class NewsDeduplicatorTests
 
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
 
-        Assert.IsFalse(result.Contains("internal_provider_alpha", StringComparison.OrdinalIgnoreCase));
-        Assert.IsFalse(result.Contains("internal_provider_beta", StringComparison.OrdinalIgnoreCase));
-        Assert.IsTrue(result.Contains("Sources: Bloomberg, Reuters"));
+        Assert.DoesNotContain("internal_provider_alpha", result, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("internal_provider_beta", result, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Sources: Bloomberg, Reuters", result);
     }
 
     [TestMethod]
@@ -77,8 +77,8 @@ public class NewsDeduplicatorTests
         var result = await deduplicator.DeduplicateAsync(providerResponses, _config);
 
         Assert.AreEqual(2, CountArticles(result));
-        Assert.IsTrue(result.Contains("Apple Announces New Product"));
-        Assert.IsTrue(result.Contains("Microsoft Cloud Revenue Expands"));
+        Assert.Contains("Apple Announces New Product", result);
+        Assert.Contains("Microsoft Cloud Revenue Expands", result);
     }
 
     [TestMethod]
@@ -157,7 +157,7 @@ public class NewsDeduplicatorTests
         stopwatch.Stop();
 
         Assert.IsFalse(string.IsNullOrWhiteSpace(result));
-        Assert.IsTrue(stopwatch.ElapsedMilliseconds < 500,
+        Assert.IsLessThan(500, stopwatch.ElapsedMilliseconds,
             $"Deduplication took {stopwatch.ElapsedMilliseconds}ms, expected < 500ms");
     }
 

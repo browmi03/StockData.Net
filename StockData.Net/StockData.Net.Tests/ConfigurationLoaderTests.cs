@@ -35,7 +35,7 @@ public class ConfigurationLoaderTests
         // Assert
         Assert.IsNotNull(config);
         Assert.AreEqual("1.0", config.Version);
-        Assert.AreEqual(1, config.Providers.Count);
+        Assert.HasCount(1, config.Providers);
         Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
         Assert.AreEqual("YahooFinanceProvider", config.Providers[0].Type);
         Assert.IsTrue(config.Providers[0].Enabled);
@@ -122,7 +122,7 @@ public class ConfigurationLoaderTests
         // Assert
         Assert.IsNotNull(config);
         Assert.AreEqual("1.0", config.Version);
-        Assert.AreEqual(1, config.Providers.Count);
+        Assert.HasCount(1, config.Providers);
         Assert.AreEqual("test_provider", config.Providers[0].Id);
         Assert.AreEqual("TestProvider", config.Providers[0].Type);
         Assert.IsTrue(config.NewsDeduplication.Enabled);
@@ -368,7 +368,7 @@ public class ConfigurationLoaderTests
 
         // Assert
         Assert.IsNotNull(config);
-        Assert.AreEqual(2, config.Providers.Count);
+        Assert.HasCount(2, config.Providers);
         Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
         Assert.AreEqual("alpha_vantage", config.Providers[1].Id);
         Assert.AreEqual("alpha_vantage", config.Routing.DataTypeRouting["StockInfo"].FallbackProviderIds[0]);
@@ -419,7 +419,7 @@ public class ConfigurationLoaderTests
 
         // Assert - Should return default config due to validation error
         Assert.IsNotNull(config);
-        Assert.AreEqual(1, config.Providers.Count);
+        Assert.HasCount(1, config.Providers);
         Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
     }
 
