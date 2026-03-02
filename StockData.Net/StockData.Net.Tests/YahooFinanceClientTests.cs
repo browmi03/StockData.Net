@@ -11,9 +11,9 @@ namespace StockData.Net.Tests;
 [TestClass]
 public class YahooFinanceClientTests
 {
-    private Mock<HttpMessageHandler> _mockHttpHandler;
-    private HttpClient _httpClient;
-    private YahooFinanceClient _client;
+    private Mock<HttpMessageHandler> _mockHttpHandler = null!;
+    private HttpClient _httpClient = null!;
+    private YahooFinanceClient _client = null!;
 
     [TestInitialize]
     public void Setup()
@@ -75,8 +75,8 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Contains("\"Open\":100"));
-        Assert.IsTrue(result.Contains("\"Close\":102"));
+        Assert.Contains("\"Open\":100", result);
+        Assert.Contains("\"Close\":102", result);
     }
 
     [TestMethod]
@@ -90,7 +90,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetHistoricalPricesAsync("INVALID", "1mo", "1d");
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -127,7 +127,7 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Contains("regularMarketPrice"));
+        Assert.Contains("regularMarketPrice", result);
     }
 
     [TestMethod]
@@ -155,8 +155,8 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Contains("Apple announces new product"));
-        Assert.IsTrue(result.Contains("Tech News"));
+        Assert.Contains("Apple announces new product", result);
+        Assert.Contains("Tech News", result);
     }
 
     [TestMethod]
@@ -170,7 +170,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetNewsAsync("AAPL");
 
         // Assert
-        Assert.IsTrue(result.Contains("No news found"));
+        Assert.Contains("No news found", result);
     }
 
     [TestMethod]
@@ -451,8 +451,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetHistoricalPricesAsync("AAPL");
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("Network error"));
+        Assert.Contains("Error", result);
+        Assert.Contains("Network error", result);
     }
 
     [TestMethod]
@@ -512,7 +512,7 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsFalse(result.Contains("Error"));
+        Assert.DoesNotContain("Error", result);
     }
 
     [TestMethod]
@@ -588,7 +588,7 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue( result.Contains("Market Update") || result.Contains("Title"));
+        Assert.IsTrue(result.Contains("Market Update") || result.Contains("Title"));
     }
 
     [TestMethod]
@@ -666,7 +666,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetMarketNewsAsync();
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
+        Assert.Contains("Error", result);
         Assert.IsTrue(result.Contains("market news") || result.Contains("Connection error"));
     }
 
@@ -685,8 +685,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetStockInfoAsync("AAPL");
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("AAPL"));
+        Assert.Contains("Error", result);
+        Assert.Contains("AAPL", result);
     }
 
     [TestMethod]
@@ -704,7 +704,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetNewsAsync("GOOGL");
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
+        Assert.Contains("Error", result);
         Assert.IsTrue(result.Contains("GOOGL") || result.Contains("news"));
     }
 
@@ -723,7 +723,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetStockActionsAsync("TSLA");
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
+        Assert.Contains("Error", result);
         Assert.IsTrue(result.Contains("TSLA") || result.Contains("stock actions"));
     }
 
@@ -742,8 +742,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetFinancialStatementAsync("AMD", FinancialStatementType.BalanceSheet);
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("AMD"));
+        Assert.Contains("Error", result);
+        Assert.Contains("AMD", result);
     }
 
     [TestMethod]
@@ -761,8 +761,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetHolderInfoAsync("NFLX", HolderType.MajorHolders);
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("NFLX"));
+        Assert.Contains("Error", result);
+        Assert.Contains("NFLX", result);
     }
 
     [TestMethod]
@@ -780,8 +780,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetOptionExpirationDatesAsync("INTC");
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("INTC"));
+        Assert.Contains("Error", result);
+        Assert.Contains("INTC", result);
     }
 
     [TestMethod]
@@ -800,8 +800,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetOptionChainAsync("META", expirationDate, OptionType.Puts);
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("META"));
+        Assert.Contains("Error", result);
+        Assert.Contains("META", result);
     }
 
     [TestMethod]
@@ -819,8 +819,8 @@ public class YahooFinanceClientTests
         var result = await _client.GetRecommendationsAsync("NVDA", RecommendationType.UpgradesDowngrades);
 
         // Assert
-        Assert.IsTrue(result.Contains("Error"));
-        Assert.IsTrue(result.Contains("NVDA"));
+        Assert.Contains("Error", result);
+        Assert.Contains("NVDA", result);
     }
 
     [TestMethod]
@@ -872,8 +872,8 @@ public class YahooFinanceClientTests
 
         // Assert
         Assert.IsNotNull(result);
-        Assert.IsTrue(result.Contains("Goldman Sachs")); // Recent should be included
-        Assert.IsFalse(result.Contains("Morgan Stanley")); // Old should be filtered out
+        Assert.Contains("Goldman Sachs", result); // Recent should be included
+        Assert.DoesNotContain("Morgan Stanley", result); // Old should be filtered out
     }
 
     [TestMethod]
@@ -887,7 +887,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetStockInfoAsync("INVALID123");
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -901,7 +901,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetFinancialStatementAsync("INVALID", FinancialStatementType.CashFlow);
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -915,7 +915,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetHolderInfoAsync("BADTICKER", HolderType.MajorHolders);
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -929,7 +929,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetOptionExpirationDatesAsync("NOTREAL");
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -944,7 +944,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetOptionChainAsync("FAKE", expirationDate, OptionType.Calls);
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -958,7 +958,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetRecommendationsAsync("NOTATICKER", RecommendationType.Recommendations);
 
         // Assert
-        Assert.IsTrue(result.Contains("not found"));
+        Assert.Contains("not found", result);
     }
 
     [TestMethod]
@@ -989,7 +989,7 @@ public class YahooFinanceClientTests
         var result = await _client.GetHistoricalPricesAsync("AAPL");
 
         // Assert
-        Assert.IsTrue(result.Contains("No historical data"));
+        Assert.Contains("No historical data", result);
     }
 
     [TestMethod]
