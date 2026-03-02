@@ -121,4 +121,4 @@ jobs:
           }
           ```
 
-          See [Deployment Guide](https://github.com/your-org/FinanceMCP/blob/main/docs/deployment/DEPLOYMENT_GUIDE.md) for complete instructions.
+          See [Deployment Guide](https://github.com/${{ github.repository }}/blob/main/docs/deployment/DEPLOYMENT_GUIDE.md) for complete instructions.

@@ -15,10 +15,13 @@ public class NewsAggregationRouterTests
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         primary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate1));
         secondary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2));
 
         var router = CreateRouter(primary.Object, secondary.Object, deduplicationEnabled: true);
 
@@ -36,8 +39,10 @@ public class NewsAggregationRouterTests
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
 
+        var newsDate = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+
         primary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate));
         secondary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Exception("secondary unavailable"));
 
@@ -55,10 +60,13 @@ public class NewsAggregationRouterTests
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         primary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate1));
         secondary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2));
 
         var router = CreateRouter(primary.Object, secondary.Object, deduplicationEnabled: false);
 
@@ -98,10 +106,13 @@ public class NewsAggregationRouterTests
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
 
+        var newsDate1 = DateTime.UtcNow.AddDays(-2).ToString("yyyy-MM-dd HH:mm:ss");
+        var newsDate2 = DateTime.UtcNow.AddDays(-2).AddMinutes(-30).ToString("yyyy-MM-dd HH:mm:ss");
+
         primary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", "2026-02-27 10:00:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Reuters", "https://example.com/a", newsDate1));
         secondary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", "2026-02-27 09:30:00"));
+            .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2));
 
         var failingDeduplicator = new NewsDeduplicator(new ThrowingSimilarityStrategy());
         var router = CreateRouter(primary.Object, secondary.Object, deduplicationEnabled: true, deduplicator: failingDeduplicator);

@@ -188,16 +188,17 @@ public class YahooFinanceProviderTests
     public async Task GetOptionChainAsync_WithValidParameters_CallsClient()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var expectedResult = "option chain";
-        _mockClient.Setup(c => c.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls, It.IsAny<CancellationToken>()))
+        _mockClient.Setup(c => c.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResult);
 
         // Act
-        var result = await _provider.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls);
+        var result = await _provider.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.AreEqual(expectedResult, result);
-        _mockClient.Verify(c => c.GetOptionChainAsync("SPY", "2024-12-20", OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
+        _mockClient.Verify(c => c.GetOptionChainAsync("SPY", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]

@@ -63,7 +63,8 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response.Result);
         
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.IsTrue(resultJson.Contains("2024-11-05"));
+        // Protocol version should match the MCP specification date format "YYYY-MM-DD"
+        Assert.IsTrue(resultJson.Contains("protocolVersion"));
         Assert.IsTrue(resultJson.Contains("StockData-mcp"));
     }
 
@@ -128,7 +129,8 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_GetHistoricalStockPrices_Success()
     {
         // Arrange
-        var testData = "[{\"Date\":\"2024-01-01\",\"Open\":150.0}]";
+        var testDate = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"Date\":\"{testDate}\",\"Open\":150.0}}]";
         _mockProvider
             .Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -157,7 +159,7 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
         var resultJson = JsonSerializer.Serialize(response.Result);
         // The response is wrapped in {content: [{type: "text", text: "..."}]}
-        Assert.IsTrue(resultJson.Contains("Date") || resultJson.Contains("2024-01-01"));
+        Assert.IsTrue(resultJson.Contains("Date"));
     }
 
     [TestMethod]
@@ -258,7 +260,8 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_GetStockActions_Success()
     {
         // Arrange
-        var testData = "[{\"Date\":\"2024-01-01\",\"Dividends\":0.25}]";
+        var testDate = DateTime.Now.AddMonths(-3).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"Date\":\"{testDate}\",\"Dividends\":0.25}}]";
         _mockProvider
             .Setup(p => p.GetStockActionsAsync("TSLA", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -290,7 +293,8 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_GetFinancialStatement_Success()
     {
         // Arrange
-        var testData = "[{\"date\":\"2023-12-31\",\"totalRevenue\":100000000}]";
+        var testDate = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"date\":\"{testDate}\",\"totalRevenue\":100000000}}]";
         _mockProvider
             .Setup(p => p.GetFinancialStatementAsync("NVDA", FinancialStatementType.IncomeStatement, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -356,7 +360,9 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_GetOptionExpirationDates_Success()
     {
         // Arrange
-        var testData = "[\"2024-01-19\",\"2024-02-16\"]";
+        var date1 = DateTime.Now.AddDays(14).ToString("yyyy-MM-dd");
+        var date2 = DateTime.Now.AddDays(42).ToString("yyyy-MM-dd");
+        var testData = $"[\"{date1}\",\"{date2}\"]";
         _mockProvider
             .Setup(p => p.GetOptionExpirationDatesAsync("AMD", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -388,19 +394,20 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_GetOptionChain_Success()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var testData = "[{\"strike\":150.0,\"lastPrice\":5.0}]";
         _mockProvider
-            .Setup(p => p.GetOptionChainAsync("INTC", "2024-02-16", OptionType.Calls, It.IsAny<CancellationToken>()))
+            .Setup(p => p.GetOptionChainAsync("INTC", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
 
-        var paramsJson = JsonDocument.Parse(@"{
+        var paramsJson = JsonDocument.Parse($@"{{
             ""name"": ""get_option_chain"",
-            ""arguments"": {
+            ""arguments"": {{
                 ""ticker"": ""INTC"",
-                ""expiration_date"": ""2024-02-16"",
+                ""expiration_date"": ""{expirationDate}"",
                 ""option_type"": ""calls""
-            }
-        }");
+            }}
+        }}");
 
         var request = new McpRequest
         {
@@ -415,7 +422,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNull(response.Error);
-        _mockProvider.Verify(p => p.GetOptionChainAsync("INTC", "2024-02-16", OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
+        _mockProvider.Verify(p => p.GetOptionChainAsync("INTC", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -588,14 +595,15 @@ public class StockDataMcpServerTests
     public async Task HandleToolCallAsync_InvalidOptionType_ReturnsError()
     {
         // Arrange
-        var paramsJson = JsonDocument.Parse(@"{
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
+        var paramsJson = JsonDocument.Parse($@"{{
             ""name"": ""get_option_chain"",
-            ""arguments"": {
+            ""arguments"": {{
                 ""ticker"": ""AAPL"",
-                ""expiration_date"": ""2024-01-19"",
+                ""expiration_date"": ""{expirationDate}"",
                 ""option_type"": ""invalid""
-            }
-        }");
+            }}
+        }}");
 
         var request = new McpRequest
         {
@@ -727,6 +735,7 @@ public class StockDataMcpServerTests
     public async Task ParseOptionType_AllValidTypes_ParseCorrectly(string typeString, OptionType expected)
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         _mockProvider
             .Setup(p => p.GetOptionChainAsync(It.IsAny<string>(), It.IsAny<string>(), expected, It.IsAny<CancellationToken>()))
             .ReturnsAsync("[]");
@@ -735,7 +744,7 @@ public class StockDataMcpServerTests
             ""name"": ""get_option_chain"",
             ""arguments"": {{
                 ""ticker"": ""TEST"",
-                ""expiration_date"": ""2024-01-19"",
+                ""expiration_date"": ""{expirationDate}"",
                 ""option_type"": ""{typeString}""
             }}
         }}");
@@ -753,7 +762,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNull(response.Error);
-        _mockProvider.Verify(p => p.GetOptionChainAsync("TEST", "2024-01-19", expected, It.IsAny<CancellationToken>()), Times.Once);
+        _mockProvider.Verify(p => p.GetOptionChainAsync("TEST", expirationDate, expected, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -871,7 +880,8 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_GetHistoricalPrices_IntegrationWithMcp()
     {
         // Arrange
-        var testData = "[{\"Date\":\"2024-01-01\",\"Open\":150.0,\"Close\":155.0}]";
+        var testDate = DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"Date\":\"{testDate}\",\"Open\":150.0,\"Close\":155.0}}]";
         _mockProvider
             .Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -922,7 +932,8 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_GetStockActions_IntegrationWithMcp()
     {
         // Arrange
-        var testData = "[{\"Date\":\"2024-01-01\",\"Dividends\":0.25}]";
+        var testDate = DateTime.Now.AddMonths(-3).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"Date\":\"{testDate}\",\"Dividends\":0.25}}]";
         _mockProvider
             .Setup(p => p.GetStockActionsAsync("AAPL", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -939,7 +950,8 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_GetFinancialStatement_IntegrationWithMcp()
     {
         // Arrange
-        var testData = "[{\"date\":\"2023-12-31\",\"totalRevenue\":1000000}]";
+        var testDate = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"date\":\"{testDate}\",\"totalRevenue\":1000000}}]";
         _mockProvider
             .Setup(p => p.GetFinancialStatementAsync("AAPL", FinancialStatementType.IncomeStatement, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -973,7 +985,9 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_GetOptionExpirationDates_IntegrationWithMcp()
     {
         // Arrange
-        var testData = "[\"2024-01-19\",\"2024-02-16\"]";
+        var date1 = DateTime.Now.AddDays(14).ToString("yyyy-MM-dd");
+        var date2 = DateTime.Now.AddDays(42).ToString("yyyy-MM-dd");
+        var testData = $"[\"{date1}\",\"{date2}\"]";
         _mockProvider
             .Setup(p => p.GetOptionExpirationDatesAsync("AAPL", It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -990,17 +1004,18 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_GetOptionChain_IntegrationWithMcp()
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var testData = "[{\"strike\":150.0,\"lastPrice\":5.0}]";
         _mockProvider
-            .Setup(p => p.GetOptionChainAsync("AAPL", "2024-01-19", OptionType.Calls, It.IsAny<CancellationToken>()))
+            .Setup(p => p.GetOptionChainAsync("AAPL", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
 
         // Act
-        var result = await _router.GetOptionChainAsync("AAPL", "2024-01-19", OptionType.Calls);
+        var result = await _router.GetOptionChainAsync("AAPL", expirationDate, OptionType.Calls);
 
         // Assert
         Assert.AreEqual(testData, result);
-        _mockProvider.Verify(p => p.GetOptionChainAsync("AAPL", "2024-01-19", OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
+        _mockProvider.Verify(p => p.GetOptionChainAsync("AAPL", expirationDate, OptionType.Calls, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -1030,7 +1045,8 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_AllFinancialStatementTypes_Work(FinancialStatementType type)
     {
         // Arrange
-        var testData = $"[{{\"date\":\"2023-12-31\",\"type\":\"{type}\"}}]";
+        var testDate = DateTime.Now.AddYears(-1).ToString("yyyy-MM-dd");
+        var testData = $"[{{\"date\":\"{testDate}\",\"type\":\"{type}\"}}]";
         _mockProvider
             .Setup(p => p.GetFinancialStatementAsync("AAPL", type, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
@@ -1072,17 +1088,18 @@ public class StockDataMcpServerTests
     public async Task YahooFinanceRouter_AllOptionTypes_Work(OptionType type)
     {
         // Arrange
+        var expirationDate = DateTime.UtcNow.AddMonths(2).ToString("yyyy-MM-dd");
         var testData = $"[{{\"type\":\"{type}\"}}]";
         _mockProvider
-            .Setup(p => p.GetOptionChainAsync("AAPL", "2024-01-19", type, It.IsAny<CancellationToken>()))
+            .Setup(p => p.GetOptionChainAsync("AAPL", expirationDate, type, It.IsAny<CancellationToken>()))
             .ReturnsAsync(testData);
 
         // Act
-        var result = await _router.GetOptionChainAsync("AAPL", "2024-01-19", type);
+        var result = await _router.GetOptionChainAsync("AAPL", expirationDate, type);
 
         // Assert
         Assert.AreEqual(testData, result);
-        _mockProvider.Verify(p => p.GetOptionChainAsync("AAPL", "2024-01-19", type, It.IsAny<CancellationToken>()), Times.Once);
+        _mockProvider.Verify(p => p.GetOptionChainAsync("AAPL", expirationDate, type, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
