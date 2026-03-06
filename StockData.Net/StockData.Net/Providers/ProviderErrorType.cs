@@ -36,6 +36,11 @@ public enum ProviderErrorType
     AuthenticationError,
 
     /// <summary>
+    /// Invalid caller input/request (terminal, no failover)
+    /// </summary>
+    InvalidRequest,
+
+    /// <summary>
     /// Unknown or unclassified error
     /// </summary>
     Unknown
