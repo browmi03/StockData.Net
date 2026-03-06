@@ -108,7 +108,8 @@ public class YahooFinanceProvider : IStockDataProvider
         }
 
         // Allow alphanumeric characters, dots, hyphens, and leading caret for index symbols (e.g., ^VIX)
-        if (!ticker.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '^'))
+        var symbolBody = ticker.StartsWith("^") ? ticker[1..] : ticker;
+        if (!symbolBody.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-'))
         {
             throw new ArgumentException("Ticker symbol contains invalid characters", nameof(ticker));
         }
