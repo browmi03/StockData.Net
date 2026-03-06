@@ -195,6 +195,72 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
+    public async Task HandleToolCallAsync_GetStockInfo_WithCaretTicker_Success()
+    {
+        // Arrange
+        var testData = "{\"symbol\":\"^VIX\",\"price\":18.5}";
+        _mockProvider
+            .Setup(p => p.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testData);
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""^VIX""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 111,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        // Act
+        var response = await InvokeHandleRequestAsync(request);
+
+        // Assert
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        _mockProvider.Verify(p => p.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_GetHistoricalStockPrices_WithCaretTicker_Success()
+    {
+        // Arrange
+        var testData = "[{\"Date\":\"2026-03-01T00:00:00\",\"Open\":18.0}]";
+        _mockProvider
+            .Setup(p => p.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testData);
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_historical_stock_prices"",
+            ""arguments"": {
+                ""ticker"": ""^VIX"",
+                ""period"": ""5d"",
+                ""interval"": ""1h""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 112,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        // Act
+        var response = await InvokeHandleRequestAsync(request);
+
+        // Assert
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        _mockProvider.Verify(p => p.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
     public async Task HandleToolCallAsync_GetYahooFinanceNews_Success()
     {
         // Arrange

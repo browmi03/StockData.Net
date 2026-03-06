@@ -140,7 +140,8 @@ public class YahooFinanceClient : IYahooFinanceClient
         try
         {
             var (startTime, endTime) = GetTimeRange(period);
-            var url = $"{BaseUrl}/v8/finance/chart/{ticker}?interval={interval}&period1={startTime}&period2={endTime}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v8/finance/chart/{encodedTicker}?interval={interval}&period1={startTime}&period2={endTime}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -208,7 +209,8 @@ public class YahooFinanceClient : IYahooFinanceClient
     {
         try
         {
-            var url = $"{BaseUrl}/v10/finance/quoteSummary/{ticker}?modules=summaryDetail,price,defaultKeyStatistics,financialData,calendarEvents,summaryProfile,recommendationTrend,earnings,earningsHistory,earningsTrend,industryTrend,indexTrend,sectorTrend,esgScores,incomeStatementHistory,cashflowStatementHistory,balanceSheetHistory,netSharePurchaseActivity";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v10/finance/quoteSummary/{encodedTicker}?modules=summaryDetail,price,defaultKeyStatistics,financialData,calendarEvents,summaryProfile,recommendationTrend,earnings,earningsHistory,earningsTrend,industryTrend,indexTrend,sectorTrend,esgScores,incomeStatementHistory,cashflowStatementHistory,balanceSheetHistory,netSharePurchaseActivity";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -248,7 +250,8 @@ public class YahooFinanceClient : IYahooFinanceClient
     {
         try
         {
-            var url = $"{BaseUrl}/v1/finance/search?q={ticker}&newsCount=10";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v1/finance/search?q={encodedTicker}&newsCount=10";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -412,8 +415,9 @@ public class YahooFinanceClient : IYahooFinanceClient
             await EnsureAuthenticatedAsync(cancellationToken);
 
             // Get dividends
-            var dividendsUrl = AppendCrumb($"{BaseUrl}/v8/finance/chart/{ticker}?period1=0&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=div");
-            var splitsUrl = AppendCrumb($"{BaseUrl}/v8/finance/chart/{ticker}?period1=0&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=split");
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var dividendsUrl = AppendCrumb($"{BaseUrl}/v8/finance/chart/{encodedTicker}?period1=0&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=div");
+            var splitsUrl = AppendCrumb($"{BaseUrl}/v8/finance/chart/{encodedTicker}?period1=0&period2={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}&interval=1d&events=split");
             
             var dividendsTask = _httpClient.GetStringAsync(dividendsUrl, cancellationToken);
             var splitsTask = _httpClient.GetStringAsync(splitsUrl, cancellationToken);
@@ -488,7 +492,8 @@ public class YahooFinanceClient : IYahooFinanceClient
                 _ => throw new ArgumentException($"Invalid financial statement type: {statementType}")
             };
 
-            var url = $"{BaseUrl}/v10/finance/quoteSummary/{ticker}?modules={module}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v10/finance/quoteSummary/{encodedTicker}?modules={module}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -562,7 +567,8 @@ public class YahooFinanceClient : IYahooFinanceClient
                 _ => throw new ArgumentException($"Invalid holder type: {holderType}")
             };
 
-            var url = $"{BaseUrl}/v10/finance/quoteSummary/{ticker}?modules={module}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v10/finance/quoteSummary/{encodedTicker}?modules={module}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -628,7 +634,8 @@ public class YahooFinanceClient : IYahooFinanceClient
     {
         try
         {
-            var url = $"{BaseUrl}/v7/finance/options/{ticker}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v7/finance/options/{encodedTicker}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -675,7 +682,8 @@ public class YahooFinanceClient : IYahooFinanceClient
             var dateTimeEst = new DateTime(date.Year, date.Month, date.Day, 16, 0, 0);
             var dateTimeUtc = TimeZoneInfo.ConvertTime(dateTimeEst, estZone, TimeZoneInfo.Utc);
             var timestamp = new DateTimeOffset(dateTimeUtc).ToUnixTimeSeconds();
-            var url = $"{BaseUrl}/v7/finance/options/{ticker}?date={timestamp}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v7/finance/options/{encodedTicker}?date={timestamp}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -740,7 +748,8 @@ public class YahooFinanceClient : IYahooFinanceClient
     {
         try
         {
-            var url = $"{BaseUrl}/v10/finance/quoteSummary/{ticker}?modules=recommendationTrend,upgradeDowngradeHistory";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v10/finance/quoteSummary/{encodedTicker}?modules=recommendationTrend,upgradeDowngradeHistory";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
