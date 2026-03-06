@@ -60,6 +60,46 @@ Orchestrate development across the team:
 - Manage dependencies between components
 - For larger projects, split workstreams and delegate in parallel to reduce cycle time
 
+### PR and Branch Workflow (MANDATORY)
+
+#### Two-Tier Branching Model
+
+There are two levels of merge targets with different approval rules:
+
+**Tier 1 — Feature branch → `dev` branch (AI-approved)**
+- Day-to-day development work merges into a `dev` (or named development) branch.
+- AI agents perform local review before creating the PR: build, test, code review.
+- AI agent reviews (architecture, security, QA) serve as the approval gate.
+- Once all AI reviews return explicit `PASS`, the AI may merge to the dev branch.
+- No human approval required for dev-branch PRs.
+
+**Tier 2 — `dev` branch → `main` (Human-approved)**
+- Merges to `main` **always require explicit human approval**.
+- AI agents prepare the PR: update description with change summary, test results, AI review verdicts.
+- AI notifies the human that the PR is ready for review.
+- AI must **STOP and WAIT** — do not merge until the human explicitly approves (e.g., "approved", "merge it", "LGTM").
+- After human approval, AI performs the squash-merge, branch cleanup, and switch to `main`.
+
+#### Workflow Steps
+
+1. **Branch**: Create a feature branch from the current working branch (`dev` or `main`).
+   - Naming: `fix/issue-description-N` or `feature/description-N`.
+2. **Implement**: Make changes, commit with clear messages.
+3. **Local Review**: Before creating a PR, verify locally:
+   - `dotnet build` passes with zero errors.
+   - `dotnet test` passes (report pass/fail counts).
+   - Self-review the diff for obvious issues.
+4. **Push & PR**: Push the branch and open a PR with a summary of changes, test results, and files changed.
+5. **AI Review Gate**: Orchestration coordinates AI agent reviews (architecture, security, developer, QA). All must return explicit `PASS`.
+6. **Merge Decision**:
+   - If PR targets a **dev branch** → AI may merge after AI reviews pass.
+   - If PR targets **`main`** → STOP. Notify human. Wait for explicit human approval before merging.
+7. **Merge & Cleanup**: After approval (AI or human, per target branch):
+   - Squash-merge the PR (unless told otherwise).
+   - Delete the remote feature branch.
+   - Delete the local feature branch.
+   - Switch to the target branch and `git pull`.
+
 ### 2. **Coordinate Technology-Specific Development**
 
 Delegate specialized work:
