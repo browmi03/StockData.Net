@@ -312,14 +312,13 @@ flowchart TD
     B -->|valid| D[Case Normalization]:::green
     D --> E[Symbol Translation]:::amber
     E --> F{ValidateTicker on output}:::blue
-    F -->|invalid| G[Reject: ArgumentException]:::red
+    F -->|invalid| G[Reject: ArgumentException]:::amber
     F -->|valid| H[Provider API Call]:::green
 
     classDef blue fill:#e1f5fe,stroke:#90caf9,color:#1a1a1a
     classDef green fill:#e8f5e9,stroke:#a5d6a7,color:#1a1a1a
     classDef gray fill:#f5f5f5,stroke:#bdbdbd,color:#1a1a1a
     classDef amber fill:#fff8e1,stroke:#ffecb3,color:#1a1a1a
-    classDef red fill:#ffebee,stroke:#ef9a9a,color:#1a1a1a
 ```
 
 **Rationale**: The translator accepts input characters (e.g., @ in @VX) that may not be valid for the target provider, but the translated output (^VIX) is valid. Pre-translation validation would reject valid cross-provider inputs.
