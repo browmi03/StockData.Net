@@ -79,33 +79,19 @@ public class SymbolTranslatorSecurityTests
     [DataRow(null)]
     [DataRow("")]
     [DataRow("   ")]
-    public void Translate_InvalidSymbol_ThrowsArgumentException(string? symbol)
+    public void Translate_InvalidSymbol_ReturnsInputUnchanged(string? symbol)
     {
-        try
-        {
-            _translator.Translate(symbol!, "yahoo_finance");
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate(symbol!, "yahoo_finance");
+        Assert.AreEqual(symbol, result);
     }
 
     [TestMethod]
     [DataRow(null)]
     [DataRow("")]
     [DataRow("  ")]
-    public void Translate_InvalidProvider_ThrowsArgumentException(string? providerId)
+    public void Translate_InvalidProvider_ReturnsSymbolUnchanged(string? providerId)
     {
-        try
-        {
-            _translator.Translate("VIX", providerId!);
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate("VIX", providerId!);
+        Assert.AreEqual("VIX", result);
     }
 }

@@ -48,27 +48,21 @@ public sealed class SymbolTranslator : ISymbolTranslator
 
     public string Translate(string symbol, string providerId)
     {
-        if (string.IsNullOrWhiteSpace(symbol))
+        // Return input unchanged for null/empty - defensive, no exception
+        if (string.IsNullOrWhiteSpace(symbol) || string.IsNullOrWhiteSpace(providerId))
         {
-            throw new ArgumentException("Symbol cannot be null, empty, or whitespace.", nameof(symbol));
+            return symbol;
         }
 
-        if (string.IsNullOrWhiteSpace(providerId))
-        {
-            throw new ArgumentException("Provider id cannot be null, empty, or whitespace.", nameof(providerId));
-        }
-
-        var normalizedSymbol = symbol.ToUpperInvariant();
-        var normalizedProviderId = providerId.ToUpperInvariant();
-
-        if (!_reverseIndex.TryGetValue(normalizedSymbol, out var canonicalSymbol))
+        // Dictionaries already use OrdinalIgnoreCase, no need for ToUpperInvariant
+        if (!_reverseIndex.TryGetValue(symbol, out var canonicalSymbol))
         {
             return symbol;
         }
 
         var providerMappings = _canonicalMappings[canonicalSymbol];
 
-        return providerMappings.TryGetValue(normalizedProviderId, out var translated)
+        return providerMappings.TryGetValue(providerId, out var translated)
             ? translated
             : symbol;
     }

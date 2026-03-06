@@ -117,62 +117,34 @@ public class SymbolTranslatorTests
     }
 
     [TestMethod]
-    public void Translate_NullSymbol_ThrowsArgumentException()
+    public void Translate_NullSymbol_ReturnsNull()
     {
-        try
-        {
-            _translator.Translate(null!, "yahoo_finance");
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate(null!, "yahoo_finance");
+        Assert.IsNull(result);
     }
 
     [TestMethod]
     [DataRow("")]
     [DataRow("   ")]
-    public void Translate_EmptyOrWhitespaceSymbol_ThrowsArgumentException(string input)
+    public void Translate_EmptyOrWhitespaceSymbol_ReturnsInput(string input)
     {
-        try
-        {
-            _translator.Translate(input, "yahoo_finance");
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate(input, "yahoo_finance");
+        Assert.AreEqual(input, result);
     }
 
     [TestMethod]
-    public void Translate_NullProviderId_ThrowsArgumentException()
+    public void Translate_NullProviderId_ReturnsSymbolUnchanged()
     {
-        try
-        {
-            _translator.Translate("VIX", null!);
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate("VIX", null!);
+        Assert.AreEqual("VIX", result);
     }
 
     [TestMethod]
     [DataRow("")]
     [DataRow("  ")]
-    public void Translate_EmptyOrWhitespaceProviderId_ThrowsArgumentException(string providerId)
+    public void Translate_EmptyOrWhitespaceProviderId_ReturnsSymbolUnchanged(string providerId)
     {
-        try
-        {
-            _translator.Translate("VIX", providerId);
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected
-        }
+        var result = _translator.Translate("VIX", providerId);
+        Assert.AreEqual("VIX", result);
     }
 }
