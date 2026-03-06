@@ -347,6 +347,36 @@ public class YahooFinanceProviderTests
         Assert.IsNotNull(result);
     }
 
+    [TestMethod]
+    public async Task GetStockInfoAsync_WithCaretPrefixedTicker_CallsClient()
+    {
+        // Arrange
+        _mockClient.Setup(c => c.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("stock info");
+
+        // Act
+        var result = await _provider.GetStockInfoAsync("^VIX");
+
+        // Assert
+        Assert.AreEqual("stock info", result);
+        _mockClient.Verify(c => c.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GetHistoricalPricesAsync_WithCaretPrefixedTicker_CallsClient()
+    {
+        // Arrange
+        _mockClient.Setup(c => c.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("historical data");
+
+        // Act
+        var result = await _provider.GetHistoricalPricesAsync("^VIX", "5d", "1h");
+
+        // Assert
+        Assert.AreEqual("historical data", result);
+        _mockClient.Verify(c => c.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // Error Handling Tests
 
     [TestMethod]

@@ -131,6 +131,103 @@ public class YahooFinanceClientTests
     }
 
     [TestMethod]
+    public async Task GetHistoricalPricesAsync_CaretTicker_EncodesTickerInRequestUri()
+    {
+        // Arrange
+        Uri? capturedUri = null;
+        var mockResponse = new
+        {
+            chart = new
+            {
+                result = new[]
+                {
+                    new
+                    {
+                        timestamp = new[] { 1609459200L },
+                        indicators = new
+                        {
+                            quote = new[]
+                            {
+                                new
+                                {
+                                    open = new double?[] { 18.0 },
+                                    high = new double?[] { 19.0 },
+                                    low = new double?[] { 17.5 },
+                                    close = new double?[] { 18.5 },
+                                    volume = new long?[] { 1000L }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        _mockHttpHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedUri = req.RequestUri)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(mockResponse))
+            });
+
+        // Act
+        var result = await _client.GetHistoricalPricesAsync("^VIX", "5d", "1h");
+
+        // Assert
+        Assert.IsNotNull(capturedUri);
+        StringAssert.Contains(capturedUri!.AbsoluteUri, "/%5EVIX?");
+        Assert.DoesNotContain("Error", result);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_CaretTicker_EncodesTickerInRequestUri()
+    {
+        // Arrange
+        Uri? capturedUri = null;
+        var mockResponse = new
+        {
+            quoteSummary = new
+            {
+                result = new[]
+                {
+                    new
+                    {
+                        price = new
+                        {
+                            regularMarketPrice = new { raw = 18.5, fmt = "18.50" }
+                        }
+                    }
+                }
+            }
+        };
+
+        _mockHttpHandler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .Callback<HttpRequestMessage, CancellationToken>((req, _) => capturedUri = req.RequestUri)
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(mockResponse))
+            });
+
+        // Act
+        var result = await _client.GetStockInfoAsync("^VIX");
+
+        // Assert
+        Assert.IsNotNull(capturedUri);
+        StringAssert.Contains(capturedUri!.AbsoluteUri, "/%5EVIX?modules=");
+        Assert.Contains("regularMarketPrice", result);
+    }
+
+    [TestMethod]
     public async Task GetNewsAsync_ValidTicker_ReturnsNewsArticles()
     {
         // Arrange

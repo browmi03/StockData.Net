@@ -140,7 +140,8 @@ public class YahooFinanceClient : IYahooFinanceClient
         try
         {
             var (startTime, endTime) = GetTimeRange(period);
-            var url = $"{BaseUrl}/v8/finance/chart/{ticker}?interval={interval}&period1={startTime}&period2={endTime}";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v8/finance/chart/{encodedTicker}?interval={interval}&period1={startTime}&period2={endTime}";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -208,7 +209,8 @@ public class YahooFinanceClient : IYahooFinanceClient
     {
         try
         {
-            var url = $"{BaseUrl}/v10/finance/quoteSummary/{ticker}?modules=summaryDetail,price,defaultKeyStatistics,financialData,calendarEvents,summaryProfile,recommendationTrend,earnings,earningsHistory,earningsTrend,industryTrend,indexTrend,sectorTrend,esgScores,incomeStatementHistory,cashflowStatementHistory,balanceSheetHistory,netSharePurchaseActivity";
+            var encodedTicker = Uri.EscapeDataString(ticker);
+            var url = $"{BaseUrl}/v10/finance/quoteSummary/{encodedTicker}?modules=summaryDetail,price,defaultKeyStatistics,financialData,calendarEvents,summaryProfile,recommendationTrend,earnings,earningsHistory,earningsTrend,industryTrend,indexTrend,sectorTrend,esgScores,incomeStatementHistory,cashflowStatementHistory,balanceSheetHistory,netSharePurchaseActivity";
             
             var response = await AuthenticatedGetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
