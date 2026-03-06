@@ -18,19 +18,22 @@ public class StockDataProviderRouter
     private readonly Dictionary<string, CircuitBreaker> _circuitBreakers;
     private readonly ProviderHealthMonitor _healthMonitor;
     private readonly NewsDeduplicator _newsDeduplicator;
+    private readonly ISymbolTranslator? _symbolTranslator;
     private readonly ILogger<StockDataProviderRouter>? _logger;
 
     public StockDataProviderRouter(
         McpConfiguration configuration,
         IEnumerable<IStockDataProvider> providers,
         ILogger<StockDataProviderRouter>? logger = null,
-        NewsDeduplicator? newsDeduplicator = null)
+        NewsDeduplicator? newsDeduplicator = null,
+        ISymbolTranslator? symbolTranslator = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _providers = providers?.ToDictionary(p => p.ProviderId, p => p) 
             ?? throw new ArgumentNullException(nameof(providers));
         _logger = logger;
         _newsDeduplicator = newsDeduplicator ?? new NewsDeduplicator();
+        _symbolTranslator = symbolTranslator;
 
         if (_providers.Count == 0)
         {
@@ -85,7 +88,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "HistoricalPrices",
-            async (provider, ct) => await provider.GetHistoricalPricesAsync(ticker, period, interval, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetHistoricalPricesAsync(translatedSymbol, period, interval, ct);
+            },
             cancellationToken);
     }
 
@@ -96,7 +103,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "StockInfo",
-            async (provider, ct) => await provider.GetStockInfoAsync(ticker, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetStockInfoAsync(translatedSymbol, ct);
+            },
             cancellationToken);
     }
 
@@ -109,13 +120,21 @@ public class StockDataProviderRouter
         {
             return await ExecuteWithAggregationAsync(
                 "News",
-                async (provider, ct) => await provider.GetNewsAsync(ticker, ct),
+                async (provider, ct) =>
+                {
+                    var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                    return await provider.GetNewsAsync(translatedSymbol, ct);
+                },
                 cancellationToken);
         }
 
         return await ExecuteWithFailoverAsync(
             "News",
-            async (provider, ct) => await provider.GetNewsAsync(ticker, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetNewsAsync(translatedSymbol, ct);
+            },
             cancellationToken);
     }
 
@@ -145,7 +164,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "StockActions",
-            async (provider, ct) => await provider.GetStockActionsAsync(ticker, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetStockActionsAsync(translatedSymbol, ct);
+            },
             cancellationToken);
     }
 
@@ -156,7 +179,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "FinancialStatement",
-            async (provider, ct) => await provider.GetFinancialStatementAsync(ticker, statementType, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetFinancialStatementAsync(translatedSymbol, statementType, ct);
+            },
             cancellationToken);
     }
 
@@ -167,7 +194,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "HolderInfo",
-            async (provider, ct) => await provider.GetHolderInfoAsync(ticker, holderType, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetHolderInfoAsync(translatedSymbol, holderType, ct);
+            },
             cancellationToken);
     }
 
@@ -178,7 +209,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "OptionExpirationDates",
-            async (provider, ct) => await provider.GetOptionExpirationDatesAsync(ticker, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetOptionExpirationDatesAsync(translatedSymbol, ct);
+            },
             cancellationToken);
     }
 
@@ -189,7 +224,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "OptionChain",
-            async (provider, ct) => await provider.GetOptionChainAsync(ticker, expirationDate, optionType, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetOptionChainAsync(translatedSymbol, expirationDate, optionType, ct);
+            },
             cancellationToken);
     }
 
@@ -200,7 +239,11 @@ public class StockDataProviderRouter
     {
         return await ExecuteWithFailoverAsync(
             "Recommendations",
-            async (provider, ct) => await provider.GetRecommendationsAsync(ticker, recommendationType, monthsBack, ct),
+            async (provider, ct) =>
+            {
+                var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                return await provider.GetRecommendationsAsync(translatedSymbol, recommendationType, monthsBack, ct);
+            },
             cancellationToken);
     }
 
@@ -288,6 +331,11 @@ public class StockDataProviderRouter
             catch (Exception ex)
             {
                 var errorType = ClassifyError(ex);
+                if (errorType == ProviderErrorType.InvalidRequest)
+                {
+                    throw;
+                }
+
                 _logger?.LogWarning(ex,
                     "Provider {ProviderId} failed for {DataType} with error type {ErrorType}, trying next provider",
                     providerId, dataType, errorType);
@@ -367,6 +415,11 @@ public class StockDataProviderRouter
 
         foreach (var result in results)
         {
+            if (result.IsTerminal && result.Error != null)
+            {
+                throw result.Error;
+            }
+
             if (result.Success)
             {
                 successfulResponses[result.ProviderId] = result.Response;
@@ -458,6 +511,11 @@ public class StockDataProviderRouter
         catch (Exception ex)
         {
             var errorType = ClassifyError(ex);
+            if (errorType == ProviderErrorType.InvalidRequest)
+            {
+                return AggregationProviderResult.Terminal(providerId, ex);
+            }
+
             _healthMonitor.RecordFailure(providerId, errorType);
             _logger?.LogWarning(
                 "Provider {ProviderId} failed during aggregated {DataType} with error type {ErrorType}",
@@ -490,6 +548,7 @@ public class StockDataProviderRouter
     {
         public string ProviderId { get; private init; } = string.Empty;
         public bool Success { get; private init; }
+        public bool IsTerminal { get; private init; }
         public string Response { get; private init; } = string.Empty;
         public Exception? Error { get; private init; }
 
@@ -504,6 +563,14 @@ public class StockDataProviderRouter
         {
             ProviderId = providerId,
             Success = false,
+            Error = error
+        };
+
+        public static AggregationProviderResult Terminal(string providerId, Exception error) => new()
+        {
+            ProviderId = providerId,
+            Success = false,
+            IsTerminal = true,
             Error = error
         };
     }
@@ -553,6 +620,7 @@ public class StockDataProviderRouter
     {
         return exception switch
         {
+            ArgumentException => ProviderErrorType.InvalidRequest,
             TaskCanceledException or TimeoutException => ProviderErrorType.Timeout,
             HttpRequestException httpEx when httpEx.StatusCode.HasValue && (int)httpEx.StatusCode.Value == 429 
                 => ProviderErrorType.RateLimitExceeded,

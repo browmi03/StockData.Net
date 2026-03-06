@@ -23,6 +23,9 @@ builder.Services.AddSingleton<IYahooFinanceClient, YahooFinanceClient>();
 // Register providers
 builder.Services.AddSingleton<IStockDataProvider, YahooFinanceProvider>();
 
+// Register symbol translation
+builder.Services.AddSingleton<ISymbolTranslator, SymbolTranslator>();
+
 // Register news deduplication components
 builder.Services.AddSingleton<INewsDeduplicationStrategy, LevenshteinSimilarityStrategy>();
 builder.Services.AddSingleton<NewsDeduplicator>();
@@ -33,8 +36,9 @@ builder.Services.AddSingleton<StockDataProviderRouter>(sp =>
     var configuration = sp.GetRequiredService<McpConfiguration>();
     var providers = sp.GetServices<IStockDataProvider>();
     var deduplicator = sp.GetRequiredService<NewsDeduplicator>();
+    var symbolTranslator = sp.GetService<ISymbolTranslator>();
     var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<StockDataProviderRouter>>();
-    return new StockDataProviderRouter(configuration, providers, logger, deduplicator);
+    return new StockDataProviderRouter(configuration, providers, logger, deduplicator, symbolTranslator);
 });
 
 // Register MCP server
