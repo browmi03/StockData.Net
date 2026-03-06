@@ -109,6 +109,21 @@ public class RouterTranslationIntegrationTests
         translator.Verify(t => t.Translate("VIX", ProviderId), Times.Exactly(9));
     }
 
+    [TestMethod]
+    public async Task Router_GetMarketNews_DoesNotCallTranslator()
+    {
+        var provider = CreateProvider(ProviderId);
+        var translator = new Mock<ISymbolTranslator>();
+        provider.Setup(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>())).ReturnsAsync("market news");
+
+        var router = CreateRouter(new[] { provider.Object }, translator.Object);
+
+        var result = await router.GetMarketNewsAsync();
+
+        Assert.AreEqual("market news", result);
+        translator.Verify(t => t.Translate(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
     private static StockDataProviderRouter CreateRouter(
         IStockDataProvider[] providers,
         ISymbolTranslator? translator,
