@@ -107,8 +107,9 @@ public class YahooFinanceProvider : IStockDataProvider
             throw new ArgumentException("Ticker symbol cannot exceed 10 characters", nameof(ticker));
         }
 
-        // Allow alphanumeric characters, dots, and hyphens
-        if (!ticker.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-'))
+        // Allow alphanumeric characters, dots, hyphens, and leading caret for index symbols (e.g., ^VIX)
+        var symbolBody = ticker.StartsWith("^") ? ticker[1..] : ticker;
+        if (!symbolBody.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-'))
         {
             throw new ArgumentException("Ticker symbol contains invalid characters", nameof(ticker));
         }

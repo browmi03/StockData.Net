@@ -347,6 +347,96 @@ public class YahooFinanceProviderTests
         Assert.IsNotNull(result);
     }
 
+    [TestMethod]
+    public async Task GetStockInfoAsync_WithCaretPrefixedTicker_CallsClient()
+    {
+        // Arrange
+        _mockClient.Setup(c => c.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("stock info");
+
+        // Act
+        var result = await _provider.GetStockInfoAsync("^VIX");
+
+        // Assert
+        Assert.AreEqual("stock info", result);
+        _mockClient.Verify(c => c.GetStockInfoAsync("^VIX", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GetHistoricalPricesAsync_WithCaretPrefixedTicker_CallsClient()
+    {
+        // Arrange
+        _mockClient.Setup(c => c.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("historical data");
+
+        // Act
+        var result = await _provider.GetHistoricalPricesAsync("^VIX", "5d", "1h");
+
+        // Assert
+        Assert.AreEqual("historical data", result);
+        _mockClient.Verify(c => c.GetHistoricalPricesAsync("^VIX", "5d", "1h", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WithCaretInMiddle_ThrowsArgumentException()
+    {
+        // Act & Assert
+        try
+        {
+            await _provider.GetStockInfoAsync("A^B");
+            Assert.Fail("Expected ArgumentException was not thrown");
+        }
+        catch (ArgumentException ex)
+        {
+            StringAssert.Contains(ex.Message, "invalid characters");
+        }
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WithMultipleCarets_ThrowsArgumentException()
+    {
+        // Act & Assert
+        try
+        {
+            await _provider.GetStockInfoAsync("^^VIX");
+            Assert.Fail("Expected ArgumentException was not thrown");
+        }
+        catch (ArgumentException ex)
+        {
+            StringAssert.Contains(ex.Message, "invalid characters");
+        }
+    }
+
+    [TestMethod]
+    public async Task GetHistoricalPricesAsync_WithStandardTickerSPY_CallsClient()
+    {
+        // Arrange - Regression test for SPY to ensure standard tickers still work
+        _mockClient.Setup(c => c.GetHistoricalPricesAsync("SPY", "1mo", "1d", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("historical data");
+
+        // Act
+        var result = await _provider.GetHistoricalPricesAsync("SPY", "1mo", "1d");
+
+        // Assert
+        Assert.AreEqual("historical data", result);
+        _mockClient.Verify(c => c.GetHistoricalPricesAsync("SPY", "1mo", "1d", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WithStandardTickerQQQ_CallsClient()
+    {
+        // Arrange - Regression test for QQQ to ensure standard tickers still work
+        _mockClient.Setup(c => c.GetStockInfoAsync("QQQ", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("stock info");
+
+        // Act
+        var result = await _provider.GetStockInfoAsync("QQQ");
+
+        // Assert
+        Assert.AreEqual("stock info", result);
+        _mockClient.Verify(c => c.GetStockInfoAsync("QQQ", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // Error Handling Tests
 
     [TestMethod]
