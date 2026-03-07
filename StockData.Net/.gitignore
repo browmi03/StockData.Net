@@ -61,3 +61,8 @@ orleans.codegen.cs
 
 # Test Results
 TestResults/
+
+# Local secrets (API keys)
+secrets.json
+*.secrets.json
+appsettings.*.local.json
