@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.RegularExpressions;
+using StockData.Net.Security;
 
 namespace StockData.Net.Configuration;
 
@@ -9,7 +9,7 @@ namespace StockData.Net.Configuration;
 public interface IConfigurationLoader
 {
     /// <summary>
-    /// Loads configuration from a JSON file or returns default configuration
+    /// Loads configuration from a required JSON file and validates all required settings
     /// </summary>
     /// <param name="configPath">Path to configuration file (optional)</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -28,7 +28,6 @@ public interface IConfigurationLoader
 /// </summary>
 public class ConfigurationLoader : IConfigurationLoader
 {
-    private static readonly Regex EnvVarPattern = new(@"\$\{([^}]+)\}", RegexOptions.Compiled);
     private readonly JsonSerializerOptions _jsonOptions;
 
     public ConfigurationLoader()
@@ -44,31 +43,27 @@ public class ConfigurationLoader : IConfigurationLoader
 
     public async Task<McpConfiguration> LoadConfigurationAsync(string? configPath = null, CancellationToken cancellationToken = default)
     {
-        // If no config path provided or file doesn't exist, return default
-        if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
+        if (string.IsNullOrWhiteSpace(configPath))
         {
-            if (!string.IsNullOrWhiteSpace(configPath))
-            {
-                Console.Error.WriteLine($"Configuration file not found: {configPath}. Using default configuration.");
-            }
-            return GetDefaultConfiguration();
+            throw new InvalidOperationException("A configuration file path is required.");
+        }
+
+        if (!File.Exists(configPath))
+        {
+            throw new FileNotFoundException($"Configuration file not found: {configPath}.", configPath);
         }
 
         try
         {
             // Read and parse JSON
             var json = await File.ReadAllTextAsync(configPath, cancellationToken);
-            
-            // Expand environment variables
-            json = ExpandEnvironmentVariables(json);
-            
+
             // Deserialize configuration
             var config = JsonSerializer.Deserialize<McpConfiguration>(json, _jsonOptions);
-            
+
             if (config == null)
             {
-                Console.Error.WriteLine("Failed to deserialize configuration. Using default configuration.");
-                return GetDefaultConfiguration();
+                throw new InvalidOperationException("Configuration file is invalid or empty.");
             }
 
             // Validate configuration
@@ -76,11 +71,10 @@ public class ConfigurationLoader : IConfigurationLoader
             
             return config;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is JsonException || ex is NotSupportedException)
         {
-            var sanitizedMessage = SanitizeMessage(ex.Message);
-            Console.Error.WriteLine($"Error loading configuration: {sanitizedMessage}. Using default configuration.");
-            return GetDefaultConfiguration();
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"Failed to parse configuration file: {sanitizedMessage}", ex);
         }
     }
 
@@ -195,39 +189,6 @@ public class ConfigurationLoader : IConfigurationLoader
                 IdleConnectionTimeoutSeconds = 90
             }
         };
-    }
-
-    private string ExpandEnvironmentVariables(string json)
-    {
-        return EnvVarPattern.Replace(json, match =>
-        {
-            var varName = match.Groups[1].Value;
-            var value = Environment.GetEnvironmentVariable(varName);
-            
-            if (string.IsNullOrEmpty(value))
-            {
-                var sanitizedMessage = SanitizeMessage($"Environment variable '{varName}' is not set");
-                throw new InvalidOperationException(sanitizedMessage);
-            }
-            
-            return value;
-        });
-    }
-
-    /// <summary>
-    /// Sanitizes error messages by redacting sensitive information
-    /// </summary>
-    private static string SanitizeMessage(string message)
-    {
-        if (string.IsNullOrEmpty(message))
-        {
-            return message;
-        }
-
-        // Redact sequences of 16+ alphanumeric characters (likely API keys/tokens)
-        var redactedMessage = Regex.Replace(message, @"\b[A-Za-z0-9]{16,}\b", "[REDACTED]");
-        
-        return redactedMessage;
     }
 
     /// <summary>

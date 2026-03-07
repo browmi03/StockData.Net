@@ -14,6 +14,7 @@ StockData.Net is an MCP server that brings comprehensive financial market data t
 - [Quick Start](#quick-start)
 - [Installation and Setup](#installation-and-setup)
 - [Add MCP Server to VS Code](#add-mcp-server-to-vs-code)
+- [Configuring Market Data Providers](#configuring-market-data-providers)
 - [MCP Server Capabilities](#mcp-server-capabilities)
 - [Deployment and Versioning](#deployment-and-versioning)
 - [Security](#security)
@@ -49,7 +50,7 @@ StockData.Net is an MCP server that brings comprehensive financial market data t
 
 - **🔒 Secure & Private**
   - All communication encrypted with HTTPS
-  - No API keys or credentials exposed
+  - Provider API keys are supported and must be provisioned securely
   - Works with StockData.Net's financial market data
   - Your queries remain private between you and your AI assistant
 
@@ -141,6 +142,247 @@ Once configured, ask your AI assistant:
 
 ---
 
+## Configuring Market Data Providers
+
+StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports four market data providers with different strengths and capabilities:
+
+- **Yahoo Finance** - Free, no API key required, used as default fallback
+- **Finnhub** - Real-time stock data with generous free tier
+- **Polygon.io** - Historical OHLCV data and aggregates
+- **Alpha Vantage** - Historical time series and forex data
+
+Each provider can be independently enabled/disabled and configured with its own API key and rate limits. The server automatically routes requests to the best available provider based on data type and implements automatic failover if a provider fails.
+
+---
+
+### Provider Details and Registration
+
+#### Yahoo Finance (Built-in Provider)
+
+**Description:** Built-in provider with no API key required. Provides stock prices, historical data, and basic fundamentals.
+
+**Free Tier:** No explicit limits, but rate limiting may apply at the provider level.
+
+**Configuration:** Enabled by default, no API key needed.
+
+**Best used for:** General stock quotes, historical prices, basic financial data, and as a reliable fallback provider.
+
+---
+
+#### Finnhub
+
+**Description:** Real-time stock market data including quotes, news, fundamentals, and economic data. Excellent for real-time price data and market news.
+
+**Free Tier:** 60 API calls per minute
+
+**Registration:**
+
+1. Visit [https://finnhub.io/](https://finnhub.io/)
+2. Click "Get free API key" and create an account
+3. Copy your API key from the dashboard
+
+**Configuration:**
+
+1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+
+```powershell
+dotnet user-secrets init
+dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_here"
+```
+
+2. Enable the provider in `appsettings.json`:
+
+
+```json
+{
+  "id": "finnhub",
+  "enabled": true,
+  "priority": 2,
+  "capabilities": ["StockPrice", "HistoricalData", "Quote"],
+  "rateLimit": {
+    "requestsPerMinute": 60
+  }
+}
+```
+
+**Rate Limit Configuration:** The default 60 requests/minute matches the free tier. Adjust `requestsPerMinute` if you have a paid plan.
+
+---
+
+#### Polygon.io
+
+**Description:** Comprehensive historical market data including OHLCV (Open, High, Low, Close, Volume) bars, aggregates, and tick-level data. Excellent for historical analysis and backtesting.
+
+**Free Tier:** 5 API calls per minute
+
+**Registration:**
+
+1. Visit [https://polygon.io/](https://polygon.io/)
+2. Click "Get Your Free API Key" and sign up
+3. Verify your email address
+4. Copy your API key from the dashboard
+
+**Configuration:**
+
+1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+
+```powershell
+dotnet user-secrets init
+dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_here"
+```
+
+2. Enable the provider in `appsettings.json`:
+
+
+```json
+{
+  "id": "polygon",
+  "enabled": true,
+  "priority": 3,
+  "capabilities": ["HistoricalData", "StockPrice"],
+  "rateLimit": {
+    "requestsPerMinute": 5
+  }
+}
+```
+
+**Rate Limit Configuration:** The default 5 requests/minute matches the free tier. Consider upgrading to a paid plan for higher limits if needed.
+
+---
+
+#### Alpha Vantage
+
+**Description:** Historical time series data, technical indicators, and forex data. Good for historical analysis and international markets.
+
+**Free Tier:** 5 API calls per minute (500 per day)
+
+**Registration:**
+
+1. Visit [https://www.alphavantage.co/](https://www.alphavantage.co/)
+2. Click "Get Your Free API Key Today"
+3. Fill out the form and submit
+4. Check your email for the API key
+
+**Configuration:**
+
+1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+
+```powershell
+dotnet user-secrets init
+dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_actual_alphavantage_api_key_here"
+```
+
+2. Enable the provider in `appsettings.json`:
+
+
+```json
+{
+  "id": "alphavantage",
+  "enabled": true,
+  "priority": 4,
+  "capabilities": ["HistoricalData", "StockPrice"],
+  "rateLimit": {
+    "requestsPerMinute": 5
+  }
+}
+```
+
+**Rate Limit Configuration:** The default 5 requests/minute matches the free tier. Note that Alpha Vantage also has a daily limit of 500 requests.
+
+---
+
+### Enable or Disable Providers
+
+Each provider in `appsettings.json` has an `enabled` flag:
+
+```json
+{
+  "id": "finnhub",
+  "enabled": true,
+  "priority": 2
+}
+```
+
+- Set `enabled: true` to include a provider in the routing chain
+- Set `enabled: false` to remove it from operation (API key not required if disabled)
+- `priority` determines the order (lower values = higher priority)
+
+**Important:** If all providers are disabled, the server will refuse to start with an error message.
+
+---
+
+### Provider Routing and Failover
+
+The server intelligently routes requests based on data type and implements automatic failover:
+
+1. **Request arrives** - Server determines data type (e.g., StockPrice, HistoricalData)
+2. **Primary provider selected** - Based on priority and capabilities
+3. **Request attempted** - Server calls the primary provider
+4. **On failure** - Server automatically tries fallback providers in priority order
+5. **First success wins** - The first successful response is returned
+6. **All failed** - Returns a provider failover error
+
+Provider order is controlled by `priority` values and `routing.dataTypeRouting.*.fallbackProviderIds` in `appsettings.json`.
+
+---
+
+### Default Rate Limits Summary
+
+| Provider | Default Limit | Free Tier | Notes |
+| --- | --- | --- | --- |
+| Yahoo Finance | Not rate-limited | N/A | Provider-side limits may apply |
+| Finnhub | 60 requests/min | 60 requests/min | Configurable via `rateLimit.requestsPerMinute` |
+| Polygon.io | 5 requests/min | 5 requests/min | Matches free tier default |
+| Alpha Vantage | 5 requests/min | 5 req/min (500/day) | Has daily limit in addition to per-minute limit |
+
+---
+
+### Security Best Practices
+
+**IMPORTANT:** Follow these security practices when working with API keys:
+
+✅ **DO:**
+
+- Use `dotnet user-secrets` for local development
+- Use GitHub Secrets plus ephemeral `secrets.json` materialization for CI integration tests
+- Use GitHub Secrets for CI/CD pipelines (see [docs/deployment/GITHUB_SECRETS_VALIDATION.md](docs/deployment/GITHUB_SECRETS_VALIDATION.md))
+- Use Azure Key Vault or similar for production deployments (see [docs/security/security-summary.md](docs/security/security-summary.md))
+- Keep placeholder values like `"<injected-from-secrets>"` in committed config files
+- Keep CI logs secret-safe by masking provider keys before test execution
+- Keep repository secret scanning enabled in CI (gitleaks)
+
+❌ **DON'T:**
+
+- Never commit real API keys to source control
+- Never include API keys in screenshots or documentation
+- Never share API keys via email or chat
+- Never hardcode API keys in `appsettings.json` or `appsettings.Development.json`
+
+**Fail-Fast Validation:** If an enabled provider has a missing or placeholder API key, the server will refuse to start and display a clear error message.
+
+---
+
+### Quick Setup Script
+
+For rapid local development setup, run these commands from the `StockData.Net/StockData.Net.McpServer` directory:
+
+```powershell
+# Initialize user secrets (only needed once)
+dotnet user-secrets init
+
+# Set API keys for all providers
+dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_finnhub_key"
+dotnet user-secrets set "Providers:Polygon:ApiKey" "your_polygon_key"
+dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_alphavantage_key"
+
+# List all secrets to verify (keys are hidden)
+dotnet user-secrets list
+```
+
+**Note:** Replace `"your_*_key"` with your actual API keys. The secrets are stored securely outside the project directory.
+
+---
+
 ## MCP Server Capabilities
 
 Once you've configured the MCP server, here are the types of queries you can ask your AI assistant:
@@ -210,7 +452,7 @@ Download the most recent `StockData.Net.McpServer-{VERSION}-win-x64.zip` for you
 ### Secure by Design
 
 - ✅ **HTTPS Only** - All communication with StockData.Net is encrypted
-- ✅ **No Credentials** - No API keys needed; uses public market data
+- ✅ **Credential Safety** - API keys for optional providers are supported and validated at startup
 - ✅ **Input Validation** - All queries are validated before processing
 - ✅ **Safe Error Messages** - No sensitive information in error messages
 

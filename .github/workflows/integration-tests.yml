@@ -25,9 +25,64 @@ jobs:
       
     - name: Build solution
       run: dotnet build StockData.Net.sln --configuration Release --no-restore
+
+    - name: Mask secret values
+      shell: bash
+      env:
+        FINNHUB_API_KEY: ${{ secrets['FINNHUB_API_KEY'] }}
+        POLYGON_API_KEY: ${{ secrets['POLYGON_API_KEY'] }}
+        ALPHAVANTAGE_API_KEY: ${{ secrets['ALPHAVANTAGE_API_KEY'] }}
+      run: |
+        for value in "$FINNHUB_API_KEY" "$POLYGON_API_KEY" "$ALPHAVANTAGE_API_KEY"; do
+          if [ -n "$value" ]; then
+            echo "::add-mask::$value"
+          fi
+        done
+
+    - name: Validate provider secret availability
+      if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+      shell: bash
+      run: |
+        missing=()
+
+        [[ -z "${{ secrets['FINNHUB_API_KEY'] }}" ]] && missing+=("FINNHUB_API_KEY")
+        [[ -z "${{ secrets['POLYGON_API_KEY'] }}" ]] && missing+=("POLYGON_API_KEY")
+        [[ -z "${{ secrets['ALPHAVANTAGE_API_KEY'] }}" ]] && missing+=("ALPHAVANTAGE_API_KEY")
+
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "::warning::Provider API secrets are missing: ${missing[*]}. Continuing with placeholder values; provider-specific tests may be skipped."
+        else
+          echo "All provider API secrets are available."
+        fi
+
+    - name: Materialize ephemeral secrets.json
+      shell: bash
+      env:
+        FINNHUB_API_KEY: ${{ secrets['FINNHUB_API_KEY'] }}
+        POLYGON_API_KEY: ${{ secrets['POLYGON_API_KEY'] }}
+        ALPHAVANTAGE_API_KEY: ${{ secrets['ALPHAVANTAGE_API_KEY'] }}
+      run: |
+        FINNHUB_VALUE="${FINNHUB_API_KEY:-<missing-from-github-secrets>}"
+        POLYGON_VALUE="${POLYGON_API_KEY:-<missing-from-github-secrets>}"
+        ALPHAVANTAGE_VALUE="${ALPHAVANTAGE_API_KEY:-<missing-from-github-secrets>}"
+
+        cat > secrets.json <<JSON
+        {
+          "Providers": {
+            "Finnhub": { "ApiKey": "$FINNHUB_VALUE" },
+            "Polygon": { "ApiKey": "$POLYGON_VALUE" },
+            "AlphaVantage": { "ApiKey": "$ALPHAVANTAGE_VALUE" }
+          }
+        }
+        JSON
       
     - name: Run integration tests
       run: dotnet test StockData.Net/StockData.Net.IntegrationTests/StockData.Net.IntegrationTests.csproj --configuration Release --no-build --logger "trx;LogFileName=integration-test-results.trx" -v normal
+
+    - name: Remove ephemeral secrets.json
+      if: always()
+      shell: bash
+      run: rm -f secrets.json
       
     - name: Upload integration test results
       uses: actions/upload-artifact@v4
