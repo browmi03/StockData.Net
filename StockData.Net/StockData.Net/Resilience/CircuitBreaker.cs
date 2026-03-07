@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StockData.Net.Configuration;
+using StockData.Net.Security;
 
 namespace StockData.Net.Resilience;
 
@@ -210,9 +211,14 @@ public class CircuitBreaker
             _consecutiveFailures++;
             _halfOpenTestInProgress = false;
 
-            _logger.LogWarning(exception,
-                "Request failed for provider {ProviderId}. Consecutive failures: {ConsecutiveFailures}",
-                _providerId, _consecutiveFailures);
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(exception.Message);
+
+            _logger.LogWarning(
+                "Request failed for provider {ProviderId}. Consecutive failures: {ConsecutiveFailures}. ErrorType: {ErrorType}. Reason: {Reason}",
+                _providerId,
+                _consecutiveFailures,
+                exception.GetType().Name,
+                sanitizedMessage);
 
             if (_state == CircuitBreakerState.HalfOpen)
             {
