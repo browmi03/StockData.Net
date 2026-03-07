@@ -2,6 +2,7 @@ using StockData.Net.Configuration;
 using StockData.Net.Deduplication;
 using StockData.Net.Models;
 using StockData.Net.Resilience;
+using StockData.Net.Security;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
@@ -336,9 +337,15 @@ public class StockDataProviderRouter
                     throw;
                 }
 
-                _logger?.LogWarning(ex,
-                    "Provider {ProviderId} failed for {DataType} with error type {ErrorType}, trying next provider",
-                    providerId, dataType, errorType);
+                var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+
+                _logger?.LogWarning(
+                    "Provider {ProviderId} failed for {DataType} with error type {ErrorType}, trying next provider. ExceptionType: {ExceptionType}. Reason: {Reason}",
+                    providerId,
+                    dataType,
+                    errorType,
+                    ex.GetType().Name,
+                    sanitizedMessage);
                 providerErrors[providerId] = ex;
                 _healthMonitor.RecordFailure(providerId, errorType);
             }
@@ -468,16 +475,22 @@ public class StockDataProviderRouter
             }
             catch (TimeoutException ex)
             {
-                _logger?.LogWarning(ex,
-                    "News deduplication timed out for {DataType}. Returning raw aggregated responses.",
-                    dataType);
+                var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+                _logger?.LogWarning(
+                    "News deduplication timed out for {DataType}. Returning raw aggregated responses. ExceptionType: {ExceptionType}. Reason: {Reason}",
+                    dataType,
+                    ex.GetType().Name,
+                    sanitizedMessage);
                 return MergeRawNewsResponses(orderedSuccessfulResponses.Values);
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex,
-                    "News deduplication failed for {DataType}. Returning raw aggregated responses.",
-                    dataType);
+                var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+                _logger?.LogWarning(
+                    "News deduplication failed for {DataType}. Returning raw aggregated responses. ExceptionType: {ExceptionType}. Reason: {Reason}",
+                    dataType,
+                    ex.GetType().Name,
+                    sanitizedMessage);
                 return MergeRawNewsResponses(orderedSuccessfulResponses.Values);
             }
         }
@@ -581,6 +594,10 @@ public class StockDataProviderRouter
     private List<string> GetProviderChain(string dataType)
     {
         var chain = new List<string>();
+        var enabledProviderIds = _configuration.Providers
+            .Where(p => p.Enabled)
+            .Select(p => p.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Check if specific routing exists for this data type
         if (_configuration.Routing?.DataTypeRouting != null &&
@@ -608,6 +625,7 @@ public class StockDataProviderRouter
 
         // Filter to only providers we actually have registered and remove duplicates
         return chain
+            .Where(id => enabledProviderIds.Contains(id))
             .Where(id => _providers.ContainsKey(id))
             .Distinct()
             .ToList();

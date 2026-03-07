@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StockData.Net.Configuration;
+using StockData.Net.Security;
 using System.Collections.Concurrent;
 
 namespace StockData.Net.Providers;
@@ -250,9 +251,12 @@ public class ProviderHealthMonitor
                     }
                     catch (Exception ex)
                     {
-                        _logger?.LogWarning(ex,
-                            "Health check failed for provider {ProviderId}",
-                            providerId);
+                        var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+                        _logger?.LogWarning(
+                            "Health check failed for provider {ProviderId}. ExceptionType: {ExceptionType}. Reason: {Reason}",
+                            providerId,
+                            ex.GetType().Name,
+                            sanitizedMessage);
 
                         RecordFailure(providerId, ProviderErrorType.ServiceError);
                     }
