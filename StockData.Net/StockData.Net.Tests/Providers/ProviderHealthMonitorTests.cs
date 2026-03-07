@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Extensions.Logging;
 using StockData.Net.Configuration;
 using StockData.Net.Providers;
+using System.Collections.Concurrent;
 
 namespace StockData.Net.Tests.Providers;
 
@@ -10,7 +11,7 @@ public class ProviderHealthMonitorTests
 {
     private HealthCheckConfiguration _config = null!;
     private ProviderHealthMonitor _healthMonitor = null!;
-    private StubLogger<ProviderHealthMonitor> _logger = null!;
+    private RecordingLogger<ProviderHealthMonitor> _logger = null!;
 
     [TestInitialize]
     public void Setup()
@@ -21,8 +22,14 @@ public class ProviderHealthMonitorTests
             IntervalSeconds = 60,
             TimeoutSeconds = 10
         };
-        _logger = new StubLogger<ProviderHealthMonitor>();
+        _logger = new RecordingLogger<ProviderHealthMonitor>();
         _healthMonitor = new ProviderHealthMonitor(_config, _logger);
+    }
+
+    [TestMethod]
+    public void Constructor_NullConfiguration_ThrowsArgumentNullException()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() => new ProviderHealthMonitor(null!, _logger));
     }
 
     [TestMethod]
@@ -214,14 +221,140 @@ public class ProviderHealthMonitorTests
         // Assert - Should complete immediately without error
         // No background task should be started
         await Task.Delay(100); // Give some time to verify nothing happens
-        // If health monitoring was started, it would be executing health checks
+        Assert.IsTrue(_logger.Entries.Any(e =>
+            e.Level == LogLevel.Information &&
+            e.Message.Contains("disabled", StringComparison.OrdinalIgnoreCase)));
     }
 
-    // Stub logger for testing
-    private class StubLogger<T> : ILogger<T>
+    [TestMethod]
+    public void GetHealthStatus_WithEmptyProviderId_ThrowsArgumentNullException()
     {
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => false;
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+        Assert.ThrowsExactly<ArgumentNullException>(() => _healthMonitor.GetHealthStatus(""));
     }
+
+    [TestMethod]
+    public async Task PeriodicHealthCheckAsync_ExecutesHealthCheckFunction()
+    {
+        var healthCheckCalls = 0;
+        var calledSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var monitor = new ProviderHealthMonitor(
+            new HealthCheckConfiguration { Enabled = true, IntervalSeconds = 1, TimeoutSeconds = 2 },
+            _logger,
+            (providerId, ct) =>
+            {
+                Interlocked.Increment(ref healthCheckCalls);
+                calledSignal.TrySetResult(true);
+                return Task.FromResult(true);
+            });
+
+        monitor.RecordSuccess("test_provider", TimeSpan.FromMilliseconds(10));
+        await monitor.StartAsync();
+
+        var completed = await Task.WhenAny(calledSignal.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+        await monitor.StopAsync();
+
+        Assert.AreSame(calledSignal.Task, completed);
+        Assert.IsGreaterThanOrEqualTo(healthCheckCalls, 1);
+    }
+
+    [TestMethod]
+    public async Task PeriodicHealthCheckAsync_WhenProviderFails_LogsWarningAndRecordsFailure()
+    {
+        var monitor = new ProviderHealthMonitor(
+            new HealthCheckConfiguration { Enabled = true, IntervalSeconds = 1, TimeoutSeconds = 2 },
+            _logger,
+            (providerId, ct) => throw new InvalidOperationException("health check failed"));
+
+        monitor.RecordSuccess("test_provider", TimeSpan.FromMilliseconds(10));
+        await monitor.StartAsync();
+
+        await WaitForConditionAsync(() =>
+            _logger.Entries.Any(e =>
+                e.Level == LogLevel.Warning &&
+                e.Message.Contains("Health check failed for provider", StringComparison.Ordinal)));
+
+        await monitor.StopAsync();
+
+        var status = monitor.GetHealthStatus("test_provider");
+        Assert.IsGreaterThanOrEqualTo(status.ConsecutiveFailures, 1);
+        Assert.IsGreaterThanOrEqualTo(status.FailedRequests, 1);
+    }
+
+    [TestMethod]
+    public async Task PeriodicHealthCheckAsync_WhenUnhealthyProviderRecovers_MarksHealthy()
+    {
+        var monitor = new ProviderHealthMonitor(
+            new HealthCheckConfiguration { Enabled = true, IntervalSeconds = 1, TimeoutSeconds = 2 },
+            _logger,
+            (providerId, ct) => Task.FromResult(true));
+
+        monitor.RecordFailure("test_provider", ProviderErrorType.ServiceError);
+        monitor.RecordFailure("test_provider", ProviderErrorType.ServiceError);
+        monitor.RecordFailure("test_provider", ProviderErrorType.ServiceError);
+
+        Assert.IsFalse(monitor.GetHealthStatus("test_provider").IsHealthy);
+
+        await monitor.StartAsync();
+        await WaitForConditionAsync(() => monitor.GetHealthStatus("test_provider").IsHealthy);
+        await monitor.StopAsync();
+
+        var status = monitor.GetHealthStatus("test_provider");
+        Assert.IsTrue(status.IsHealthy);
+        Assert.AreEqual(0, status.ConsecutiveFailures);
+    }
+
+    [TestMethod]
+    public async Task PeriodicHealthCheckAsync_WithoutHealthCheckDelegate_LogsDebugAndSkips()
+    {
+        var monitor = new ProviderHealthMonitor(
+            new HealthCheckConfiguration { Enabled = true, IntervalSeconds = 1, TimeoutSeconds = 2 },
+            _logger,
+            null);
+
+        monitor.RecordSuccess("test_provider", TimeSpan.FromMilliseconds(10));
+        await monitor.StartAsync();
+
+        await WaitForConditionAsync(() =>
+            _logger.Entries.Any(e =>
+                e.Level == LogLevel.Debug &&
+                e.Message.Contains("skipping health checks", StringComparison.OrdinalIgnoreCase)));
+
+        await monitor.StopAsync();
+    }
+
+    private static async Task WaitForConditionAsync(Func<bool> condition, int timeoutMs = 6000, int pollIntervalMs = 100)
+    {
+        var timeoutAt = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < timeoutAt)
+        {
+            if (condition())
+            {
+                return;
+            }
+
+            await Task.Delay(pollIntervalMs);
+        }
+
+        Assert.Fail("Condition was not met before timeout.");
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public ConcurrentQueue<LogEntry> Entries { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            Entries.Enqueue(new LogEntry(logLevel, formatter(state, exception), exception));
+        }
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
 }
