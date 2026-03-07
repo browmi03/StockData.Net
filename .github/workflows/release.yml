@@ -7,7 +7,93 @@ on:
   workflow_dispatch:
 
 jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run gitleaks scan
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore StockData.Net.sln
+
+    - name: Build solution
+      run: dotnet build StockData.Net.sln --configuration Release --no-restore
+
+    - name: Mask secret values
+      shell: bash
+      env:
+        FINNHUB_API_KEY: ${{ secrets['FINNHUB_API_KEY'] }}
+        POLYGON_API_KEY: ${{ secrets['POLYGON_API_KEY'] }}
+        ALPHAVANTAGE_API_KEY: ${{ secrets['ALPHAVANTAGE_API_KEY'] }}
+      run: |
+        for value in "$FINNHUB_API_KEY" "$POLYGON_API_KEY" "$ALPHAVANTAGE_API_KEY"; do
+          if [ -n "$value" ]; then
+            echo "::add-mask::$value"
+          fi
+        done
+
+    - name: Materialize ephemeral secrets.json
+      shell: bash
+      env:
+        FINNHUB_API_KEY: ${{ secrets['FINNHUB_API_KEY'] }}
+        POLYGON_API_KEY: ${{ secrets['POLYGON_API_KEY'] }}
+        ALPHAVANTAGE_API_KEY: ${{ secrets['ALPHAVANTAGE_API_KEY'] }}
+      run: |
+        FINNHUB_VALUE="${FINNHUB_API_KEY:-<missing-from-github-secrets>}"
+        POLYGON_VALUE="${POLYGON_API_KEY:-<missing-from-github-secrets>}"
+        ALPHAVANTAGE_VALUE="${ALPHAVANTAGE_API_KEY:-<missing-from-github-secrets>}"
+
+        cat > secrets.json <<JSON
+        {
+          "Providers": {
+            "Finnhub": { "ApiKey": "$FINNHUB_VALUE" },
+            "Polygon": { "ApiKey": "$POLYGON_VALUE" },
+            "AlphaVantage": { "ApiKey": "$ALPHAVANTAGE_VALUE" }
+          }
+        }
+        JSON
+
+    - name: Run integration tests
+      run: dotnet test StockData.Net/StockData.Net.IntegrationTests/StockData.Net.IntegrationTests.csproj --configuration Release --no-build --logger "trx;LogFileName=integration-test-results.trx" -v normal
+
+    - name: Remove ephemeral secrets.json
+      if: always()
+      shell: bash
+      run: rm -f secrets.json
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results
+        path: '**/integration-test-results.trx'
+
   build-test-release:
+    needs: [secret-scan, integration-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: write
