@@ -46,28 +46,20 @@ public class ConfigurationLoaderTests
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithNoFile_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithNoFile_ThrowsInvalidOperationException()
     {
-        // Act
-        var config = await _loader.LoadConfigurationAsync(null);
-
-        // Assert
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(null));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithNonExistentFile_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithNonExistentFile_ThrowsFileNotFoundException()
     {
         // Arrange
         var nonExistentPath = Path.Combine(_testConfigDirectory, "nonexistent.json");
 
-        // Act
-        var config = await _loader.LoadConfigurationAsync(nonExistentPath);
-
-        // Assert
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        await AssertThrowsAsync<FileNotFoundException>(async () =>
+            await _loader.LoadConfigurationAsync(nonExistentPath));
     }
 
     [TestMethod]
@@ -130,22 +122,18 @@ public class ConfigurationLoaderTests
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidJson_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithInvalidJson_ThrowsInvalidOperationException()
     {
         // Arrange
         var configPath = Path.Combine(_testConfigDirectory, "invalid.json");
         await File.WriteAllTextAsync(configPath, "{ invalid json }");
 
-        // Act
-        var config = await _loader.LoadConfigurationAsync(configPath);
-
-        // Assert - Should fall back to default configuration
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithEnvironmentVariables_ExpandsVariables()
+    public async Task LoadConfigurationAsync_WithEnvironmentVariablePlaceholders_KeepsLiteralValue()
     {
         // Arrange
         var testVarName = "TEST_API_KEY_" + Guid.NewGuid().ToString("N");
@@ -204,7 +192,7 @@ public class ConfigurationLoaderTests
             // Assert
             Assert.IsNotNull(config);
             Assert.AreEqual("test_provider", config.Providers[0].Id);
-            Assert.AreEqual(testVarValue, config.Providers[0].Settings["apiKey"]);
+            Assert.AreEqual($"${{{testVarName}}}", config.Providers[0].Settings["apiKey"]);
         }
         finally
         {
@@ -261,7 +249,7 @@ public class ConfigurationLoaderTests
     // Configuration Validation Tests
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithMissingEnvironmentVariable_ThrowsInvalidOperationException()
+    public async Task LoadConfigurationAsync_WithMissingEnvironmentVariable_LoadsLiteralValue()
     {
         // Arrange
         var nonExistentVar = "NON_EXISTENT_VAR_" + Guid.NewGuid().ToString("N");
@@ -291,12 +279,13 @@ public class ConfigurationLoaderTests
         }}";
         await File.WriteAllTextAsync(configPath, configJson);
 
-        // Act - Should fallback to default configuration after exception
+        // Act
         var config = await _loader.LoadConfigurationAsync(configPath);
 
-        // Assert - Should return default config due to error
+        // Assert
         Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        Assert.AreEqual("test_provider", config.Providers[0].Id);
+        Assert.AreEqual($"${{{nonExistentVar}}}", config.Providers[0].Settings["apiKey"]);
     }
 
     [TestMethod]
@@ -375,7 +364,7 @@ public class ConfigurationLoaderTests
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithDuplicateProviderIds_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithDuplicateProviderIds_ThrowsInvalidOperationException()
     {
         // Arrange
         var configPath = Path.Combine(_testConfigDirectory, "duplicate_provider_config.json");
@@ -414,17 +403,12 @@ public class ConfigurationLoaderTests
         }";
         await File.WriteAllTextAsync(configPath, configJson);
 
-        // Act - Should fallback to default configuration after validation error
-        var config = await _loader.LoadConfigurationAsync(configPath);
-
-        // Assert - Should return default config due to validation error
-        Assert.IsNotNull(config);
-        Assert.HasCount(1, config.Providers);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidPrimaryProviderReference_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithInvalidPrimaryProviderReference_ThrowsInvalidOperationException()
     {
         // Arrange
         var configPath = Path.Combine(_testConfigDirectory, "invalid_provider_ref_config.json");
@@ -457,16 +441,12 @@ public class ConfigurationLoaderTests
         }";
         await File.WriteAllTextAsync(configPath, configJson);
 
-        // Act - Should fallback to default configuration after validation error
-        var config = await _loader.LoadConfigurationAsync(configPath);
-
-        // Assert - Should return default config due to validation error
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidDedupSimilarityThreshold_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithInvalidDedupSimilarityThreshold_ThrowsInvalidOperationException()
     {
         var configPath = Path.Combine(_testConfigDirectory, "invalid_dedup_threshold_config.json");
         var configJson = @"{
@@ -500,15 +480,12 @@ public class ConfigurationLoaderTests
 
         await File.WriteAllTextAsync(configPath, configJson);
 
-        var config = await _loader.LoadConfigurationAsync(configPath);
-
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
-        Assert.AreEqual(0.85, config.NewsDeduplication.SimilarityThreshold);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidDedupTimestampWindow_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithInvalidDedupTimestampWindow_ThrowsInvalidOperationException()
     {
         var configPath = Path.Combine(_testConfigDirectory, "invalid_dedup_window_config.json");
         var configJson = @"{
@@ -542,15 +519,12 @@ public class ConfigurationLoaderTests
 
         await File.WriteAllTextAsync(configPath, configJson);
 
-        var config = await _loader.LoadConfigurationAsync(configPath);
-
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
-        Assert.AreEqual(24, config.NewsDeduplication.TimestampWindowHours);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
     }
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidDedupMaxArticles_ReturnsDefaultConfiguration()
+    public async Task LoadConfigurationAsync_WithInvalidDedupMaxArticles_ThrowsInvalidOperationException()
     {
         var configPath = Path.Combine(_testConfigDirectory, "invalid_dedup_max_articles_config.json");
         var configJson = @"{
@@ -584,10 +558,77 @@ public class ConfigurationLoaderTests
 
         await File.WriteAllTextAsync(configPath, configJson);
 
-        var config = await _loader.LoadConfigurationAsync(configPath);
+        await AssertThrowsAsync<InvalidOperationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
+    }
 
-        Assert.IsNotNull(config);
-        Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
-        Assert.AreEqual(200, config.NewsDeduplication.MaxArticlesForComparison);
+    [TestMethod]
+    public async Task LoadConfigurationAsync_WithFinnhubRateLimitAndResilience_ParsesProviderSettings()
+    {
+        var configPath = Path.Combine(_testConfigDirectory, "finnhub_config.json");
+        var configJson = @"{
+            ""version"": ""1.0"",
+            ""providers"": [
+                {
+                    ""id"": ""finnhub"",
+                    ""type"": ""FinnhubProvider"",
+                    ""enabled"": true,
+                    ""priority"": 2,
+                    ""settings"": {
+                        ""apiKey"": ""<injected-from-secrets>"",
+                        ""baseUrl"": ""https://finnhub.io/api/v1""
+                    },
+                    ""rateLimit"": {
+                        ""enabled"": true,
+                        ""requestsPerMinute"": 60,
+                        ""burstLimit"": 10
+                    },
+                    ""resilience"": {
+                        ""circuitBreakerEnabled"": true,
+                        ""failureThreshold"": 5,
+                        ""halfOpenAfterSeconds"": 60,
+                        ""timeoutSeconds"": 15,
+                        ""retryCount"": 1,
+                        ""retryBaseDelayMs"": 500
+                    },
+                    ""healthCheck"": {
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }
+                }
+            ],
+            ""routing"": {
+                ""defaultStrategy"": ""PrimaryWithFailover"",
+                ""dataTypeRouting"": {}
+            }
+        }";
+
+        await File.WriteAllTextAsync(configPath, configJson);
+
+        var config = await _loader.LoadConfigurationAsync(configPath);
+        var provider = config.Providers.Single(p => p.Id == "finnhub");
+
+        Assert.IsTrue(provider.RateLimit.Enabled);
+        Assert.AreEqual(60, provider.RateLimit.RequestsPerMinute);
+        Assert.AreEqual(10, provider.RateLimit.BurstLimit);
+        Assert.IsTrue(provider.Resilience.CircuitBreakerEnabled);
+        Assert.AreEqual(1, provider.Resilience.RetryCount);
+        Assert.AreEqual(500, provider.Resilience.RetryBaseDelayMs);
+    }
+
+    private static async Task<TException> AssertThrowsAsync<TException>(Func<Task> action)
+        where TException : Exception
+    {
+        try
+        {
+            await action();
+        }
+        catch (TException ex)
+        {
+            return ex;
+        }
+
+        throw new AssertFailedException($"Expected exception of type {typeof(TException).Name} was not thrown.");
     }
 }
