@@ -1,6 +1,8 @@
 name: Test on Merge
 
 on:
+  pull_request:
+    branches: [ main ]
   push:
     branches: [ main ]
 
