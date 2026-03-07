@@ -16,7 +16,7 @@ public class FinnhubIntegrationTests
     public void Setup()
     {
         var apiKey = ResolveApiKey();
-        if (string.IsNullOrWhiteSpace(apiKey))
+        if (string.IsNullOrWhiteSpace(apiKey) || IsPlaceholderApiKey(apiKey))
         {
             Assert.Inconclusive("Finnhub API key not configured. Set 'Finnhub:ApiKey' or 'Providers:Finnhub:ApiKey' in user-secrets or secrets.json.");
         }
@@ -38,13 +38,16 @@ public class FinnhubIntegrationTests
     [TestCategory("LiveAPI")]
     public async Task GetStockInfoAsync_LiveAapl_ReturnsExpectedSchema()
     {
-        var result = await _provider.GetStockInfoAsync("AAPL");
-        var document = JsonDocument.Parse(result);
+        await ExecuteLiveApiTestAsync(nameof(GetStockInfoAsync_LiveAapl_ReturnsExpectedSchema), async () =>
+        {
+            var result = await _provider.GetStockInfoAsync("AAPL");
+            var document = JsonDocument.Parse(result);
 
-        Assert.AreEqual("AAPL", document.RootElement.GetProperty("symbol").GetString());
-        Assert.IsTrue(document.RootElement.TryGetProperty("price", out _));
-        Assert.IsTrue(document.RootElement.TryGetProperty("timestamp", out _));
-        Assert.AreEqual("finnhub", document.RootElement.GetProperty("sourceProvider").GetString());
+            Assert.AreEqual("AAPL", document.RootElement.GetProperty("symbol").GetString());
+            Assert.IsTrue(document.RootElement.TryGetProperty("price", out _));
+            Assert.IsTrue(document.RootElement.TryGetProperty("timestamp", out _));
+            Assert.AreEqual("finnhub", document.RootElement.GetProperty("sourceProvider").GetString());
+        });
     }
 
     [TestMethod]
@@ -52,11 +55,14 @@ public class FinnhubIntegrationTests
     [TestCategory("LiveAPI")]
     public async Task GetHistoricalPricesAsync_LiveAapl_ReturnsArray()
     {
-        var result = await _provider.GetHistoricalPricesAsync("AAPL", "1mo", "1d");
-        var document = JsonDocument.Parse(result);
+        await ExecuteLiveApiTestAsync(nameof(GetHistoricalPricesAsync_LiveAapl_ReturnsArray), async () =>
+        {
+            var result = await _provider.GetHistoricalPricesAsync("AAPL", "1mo", "1d");
+            var document = JsonDocument.Parse(result);
 
-        Assert.AreEqual(JsonValueKind.Array, document.RootElement.ValueKind);
-        Assert.IsGreaterThan(document.RootElement.GetArrayLength(), 0);
+            Assert.AreEqual(JsonValueKind.Array, document.RootElement.ValueKind);
+            Assert.IsGreaterThan(document.RootElement.GetArrayLength(), 0);
+        });
     }
 
     [TestMethod]
@@ -64,18 +70,53 @@ public class FinnhubIntegrationTests
     [TestCategory("LiveAPI")]
     public async Task GetNewsAsync_LiveAapl_ReturnsContent()
     {
-        var result = await _provider.GetNewsAsync("AAPL");
+        await ExecuteLiveApiTestAsync(nameof(GetNewsAsync_LiveAapl_ReturnsContent), async () =>
+        {
+            var result = await _provider.GetNewsAsync("AAPL");
 
-        Assert.IsFalse(string.IsNullOrWhiteSpace(result));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(result));
 
-        var blocks = result.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        Assert.IsGreaterThan(blocks.Length, 0);
+            var blocks = result.Split("\n\n", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            Assert.IsGreaterThan(blocks.Length, 0);
 
-        var first = blocks[0];
-        StringAssert.Contains(first, "Title:");
-        StringAssert.Contains(first, "Publisher:");
-        StringAssert.Contains(first, "Published:");
-        StringAssert.Contains(first, "URL:");
+            var first = blocks[0];
+            StringAssert.Contains(first, "Title:");
+            StringAssert.Contains(first, "Publisher:");
+            StringAssert.Contains(first, "Published:");
+            StringAssert.Contains(first, "URL:");
+        });
+    }
+
+    private static async Task ExecuteLiveApiTestAsync(string testName, Func<Task> testAction)
+    {
+        try
+        {
+            await testAction();
+        }
+        catch (Exception ex) when (IsUnauthorizedFailure(ex))
+        {
+            Assert.Inconclusive($"Skipping {testName}: Finnhub API key appears missing or invalid (401 Unauthorized). {ex.Message}");
+        }
+    }
+
+    private static bool IsUnauthorizedFailure(Exception exception)
+    {
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            if (current.Message.Contains("401", StringComparison.OrdinalIgnoreCase)
+                || current.Message.Contains("unauthorized", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsPlaceholderApiKey(string? apiKey)
+    {
+        return !string.IsNullOrWhiteSpace(apiKey)
+            && apiKey.Contains("missing-from-github-secrets", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ResolveApiKey()
