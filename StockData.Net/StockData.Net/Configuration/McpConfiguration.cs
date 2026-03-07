@@ -67,6 +67,16 @@ public class ProviderConfiguration
     public Dictionary<string, string> Settings { get; set; } = new();
 
     /// <summary>
+    /// Per-provider rate limit settings
+    /// </summary>
+    public RateLimitConfiguration RateLimit { get; set; } = new();
+
+    /// <summary>
+    /// Per-provider resilience settings
+    /// </summary>
+    public ResilienceConfiguration Resilience { get; set; } = new();
+
+    /// <summary>
     /// Health check configuration
     /// </summary>
     public HealthCheckConfiguration HealthCheck { get; set; } = new();
@@ -211,4 +221,61 @@ public class HealthCheckConfiguration
     /// Timeout in seconds for health check requests
     /// </summary>
     public int TimeoutSeconds { get; set; } = 10;
+}
+
+/// <summary>
+/// Rate limiting options for an individual provider
+/// </summary>
+public class RateLimitConfiguration
+{
+    /// <summary>
+    /// Whether rate limiting is enabled for this provider
+    /// </summary>
+    public bool Enabled { get; set; } = false;
+
+    /// <summary>
+    /// Maximum allowed requests in a one-minute window
+    /// </summary>
+    public int RequestsPerMinute { get; set; } = 60;
+
+    /// <summary>
+    /// Optional burst capacity for future token-bucket implementations
+    /// </summary>
+    public int BurstLimit { get; set; } = 10;
+}
+
+/// <summary>
+/// Resilience options for an individual provider
+/// </summary>
+public class ResilienceConfiguration
+{
+    /// <summary>
+    /// Whether circuit breaker policy is enabled
+    /// </summary>
+    public bool CircuitBreakerEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Number of failures before opening the circuit
+    /// </summary>
+    public int FailureThreshold { get; set; } = 5;
+
+    /// <summary>
+    /// Seconds to remain open before half-open probes
+    /// </summary>
+    public int HalfOpenAfterSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Per-request timeout in seconds
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Number of retries for transient failures
+    /// </summary>
+    public int RetryCount { get; set; } = 1;
+
+    /// <summary>
+    /// Base retry delay in milliseconds
+    /// </summary>
+    public int RetryBaseDelayMs { get; set; } = 500;
 }
