@@ -596,7 +596,7 @@ public class StockDataProviderRouter
         var chain = new List<string>();
         var enabledProviderIds = _configuration.Providers
             .Where(p => p.Enabled)
-            .Select(p => p.Id)
+            .Select(p => NormalizeProviderId(p.Id))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Check if specific routing exists for this data type
@@ -605,12 +605,14 @@ public class StockDataProviderRouter
         {
             if (!string.IsNullOrWhiteSpace(routing.PrimaryProviderId))
             {
-                chain.Add(routing.PrimaryProviderId);
+                chain.Add(NormalizeProviderId(routing.PrimaryProviderId));
             }
 
             if (routing.FallbackProviderIds != null)
             {
-                chain.AddRange(routing.FallbackProviderIds.Where(id => !string.IsNullOrWhiteSpace(id)));
+                chain.AddRange(routing.FallbackProviderIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Select(NormalizeProviderId));
             }
         }
 
@@ -620,7 +622,7 @@ public class StockDataProviderRouter
             chain.AddRange(_configuration.Providers
                 .Where(p => p.Enabled)
                 .OrderBy(p => p.Priority)
-                .Select(p => p.Id));
+                .Select(p => NormalizeProviderId(p.Id)));
         }
 
         // Filter to only providers we actually have registered and remove duplicates
@@ -629,6 +631,21 @@ public class StockDataProviderRouter
             .Where(id => _providers.ContainsKey(id))
             .Distinct()
             .ToList();
+    }
+
+    private static string NormalizeProviderId(string providerId)
+    {
+        if (string.IsNullOrWhiteSpace(providerId))
+        {
+            return providerId;
+        }
+
+        return providerId.Trim().ToLowerInvariant() switch
+        {
+            "alpha_vantage" => "alphavantage",
+            "alpha-vantage" => "alphavantage",
+            _ => providerId
+        };
     }
 
     /// <summary>

@@ -81,25 +81,25 @@ Financial data providers use different symbol formats for the same security (e.g
 
 ### Critical (Blocking)
 
-- [ ] **AC1**: Canonical names translate to Yahoo format; Yahoo format passes through unchanged
-- [ ] **AC2**: All 28 required indices present in mapping dictionary
-- [ ] **AC3**: Cross-provider translation works (e.g., @VX to ^VIX for Yahoo)
-- [ ] **AC4**: Unmapped symbols pass through unchanged
-- [ ] **AC5**: Translation occurs after provider selection in router
-- [ ] **AC6**: Backward compatibility - existing Yahoo format queries continue to work
-- [ ] **AC7**: Validation errors (ArgumentException) classified as InvalidRequest and do not trigger failover
+- [x] **AC1**: Canonical names translate to Yahoo format; Yahoo format passes through unchanged
+- [x] **AC2**: All 28 required indices present in mapping dictionary
+- [x] **AC3**: Cross-provider translation works (e.g., @VX to ^VIX for Yahoo)
+- [x] **AC4**: Unmapped symbols pass through unchanged
+- [x] **AC5**: Translation occurs after provider selection in router
+- [x] **AC6**: Backward compatibility - existing Yahoo format queries continue to work
+- [x] **AC7**: Validation errors (ArgumentException) classified as InvalidRequest and do not trigger failover
 
 ### Important (Non-Blocking)
 
-- [ ] **AC8**: All index categories covered (international, sector/commodity, bond, volatility)
-- [ ] **AC9**: Translation performance overhead < 1ms per query
-- [ ] **AC10**: Comprehensive test coverage with 90%+ line coverage
+- [x] **AC8**: All index categories covered (international, sector/commodity, bond, volatility)
+- [x] **AC9**: Translation performance overhead < 1ms per query
+- [x] **AC10**: Comprehensive test coverage with 90%+ line coverage
 
 ### Design Requirements
 
-- [ ] **AC11**: C# dictionary implementation (no config files); supports multiple providers per symbol
-- [ ] **AC12**: Extensible design - new providers require only mapping updates
-- [ ] **AC13**: Security requirements satisfied: input validation, no injection vulnerabilities, proper error handling
+- [x] **AC11**: C# dictionary implementation (no config files); supports multiple providers per symbol
+- [x] **AC12**: Extensible design - new providers require only mapping updates
+- [x] **AC13**: Security requirements satisfied: input validation, no injection vulnerabilities, proper error handling
 
 ## Out of Scope
 

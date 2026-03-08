@@ -16,6 +16,11 @@ public class McpConfiguration
     public List<ProviderConfiguration> Providers { get; set; } = new();
 
     /// <summary>
+    /// Optional typed provider credential sections for external configuration systems.
+    /// </summary>
+    public ProviderCredentialsConfiguration ProviderCredentials { get; set; } = new();
+
+    /// <summary>
     /// Routing configuration for data requests
     /// </summary>
     public RoutingConfiguration Routing { get; set; } = new();
@@ -34,6 +39,22 @@ public class McpConfiguration
     /// Performance tuning options
     /// </summary>
     public PerformanceConfiguration Performance { get; set; } = new();
+}
+
+/// <summary>
+/// Optional strongly-typed credential sections for provider API keys.
+/// </summary>
+public class ProviderCredentialsConfiguration
+{
+    public ProviderCredentialSection Finnhub { get; set; } = new();
+    public ProviderCredentialSection Polygon { get; set; } = new();
+    public ProviderCredentialSection AlphaVantage { get; set; } = new();
+}
+
+public class ProviderCredentialSection
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string BaseUrl { get; set; } = string.Empty;
 }
 
 /// <summary>

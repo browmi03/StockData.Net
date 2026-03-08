@@ -66,6 +66,8 @@ public class ConfigurationLoader : IConfigurationLoader
                 throw new InvalidOperationException("Configuration file is invalid or empty.");
             }
 
+            ApplyProviderCredentialSections(config);
+
             // Validate configuration
             ValidateConfiguration(config);
             
@@ -75,6 +77,42 @@ public class ConfigurationLoader : IConfigurationLoader
         {
             var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
             throw new InvalidOperationException($"Failed to parse configuration file: {sanitizedMessage}", ex);
+        }
+    }
+
+    private static void ApplyProviderCredentialSections(McpConfiguration config)
+    {
+        if (config.Providers == null || config.Providers.Count == 0)
+        {
+            return;
+        }
+
+        ApplyProviderCredential(config, "finnhub", config.ProviderCredentials.Finnhub);
+        ApplyProviderCredential(config, "polygon", config.ProviderCredentials.Polygon);
+        ApplyProviderCredential(config, "alphavantage", config.ProviderCredentials.AlphaVantage);
+    }
+
+    private static void ApplyProviderCredential(
+        McpConfiguration config,
+        string providerId,
+        ProviderCredentialSection section)
+    {
+        var provider = config.Providers.FirstOrDefault(
+            p => string.Equals(p.Id, providerId, StringComparison.OrdinalIgnoreCase));
+
+        if (provider is null)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(section.ApiKey))
+        {
+            provider.Settings["apiKey"] = section.ApiKey;
+        }
+
+        if (!string.IsNullOrWhiteSpace(section.BaseUrl))
+        {
+            provider.Settings["baseUrl"] = section.BaseUrl;
         }
     }
 
@@ -98,6 +136,75 @@ public class ConfigurationLoader : IConfigurationLoader
                         IntervalSeconds = 300,
                         TimeoutSeconds = 10
                     }
+                },
+                new ProviderConfiguration
+                {
+                    Id = "finnhub",
+                    Type = "FinnhubProvider",
+                    Enabled = true,
+                    Priority = 2,
+                    Settings = new Dictionary<string, string>
+                    {
+                        ["baseUrl"] = "https://finnhub.io/api/v1"
+                    },
+                    RateLimit = new RateLimitConfiguration
+                    {
+                        Enabled = true,
+                        RequestsPerMinute = 60,
+                        BurstLimit = 10
+                    },
+                    HealthCheck = new HealthCheckConfiguration
+                    {
+                        Enabled = true,
+                        IntervalSeconds = 300,
+                        TimeoutSeconds = 10
+                    }
+                },
+                new ProviderConfiguration
+                {
+                    Id = "polygon",
+                    Type = "PolygonProvider",
+                    Enabled = true,
+                    Priority = 3,
+                    Settings = new Dictionary<string, string>
+                    {
+                        ["baseUrl"] = "https://api.polygon.io"
+                    },
+                    RateLimit = new RateLimitConfiguration
+                    {
+                        Enabled = true,
+                        RequestsPerMinute = 5,
+                        BurstLimit = 5
+                    },
+                    HealthCheck = new HealthCheckConfiguration
+                    {
+                        Enabled = true,
+                        IntervalSeconds = 300,
+                        TimeoutSeconds = 10
+                    }
+                },
+                new ProviderConfiguration
+                {
+                    Id = "alphavantage",
+                    Type = "AlphaVantageProvider",
+                    Enabled = true,
+                    Priority = 4,
+                    Settings = new Dictionary<string, string>
+                    {
+                        ["baseUrl"] = "https://www.alphavantage.co"
+                    },
+                    RateLimit = new RateLimitConfiguration
+                    {
+                        Enabled = true,
+                        RequestsPerMinute = 5,
+                        BurstLimit = 5
+                    },
+                    HealthCheck = new HealthCheckConfiguration
+                    {
+                        Enabled = true,
+                        IntervalSeconds = 300,
+                        TimeoutSeconds = 10
+                    }
                 }
             },
             Routing = new RoutingConfiguration
@@ -108,61 +215,61 @@ public class ConfigurationLoader : IConfigurationLoader
                     ["HistoricalPrices"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["StockInfo"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["News"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["MarketNews"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["StockActions"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["FinancialStatement"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["HolderInfo"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["OptionExpirationDates"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["OptionChain"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     },
                     ["Recommendations"] = new DataTypeRouting
                     {
                         PrimaryProviderId = "yahoo_finance",
-                        FallbackProviderIds = new List<string>(),
+                        FallbackProviderIds = new List<string> { "finnhub", "polygon", "alphavantage" },
                         TimeoutSeconds = 30
                     }
                 }
