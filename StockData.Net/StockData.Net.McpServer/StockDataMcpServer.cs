@@ -5,6 +5,7 @@ using StockData.Net;
 using StockData.Net.Models;
 using StockData.Net.McpServer.Models;
 using StockData.Net.Providers;
+using StockData.Net.Security;
 
 [assembly: InternalsVisibleTo("StockData.Net.McpServer.Tests")]
 
@@ -57,7 +58,7 @@ public class StockDataMcpServer
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"Error: {ex.Message}");
+                Console.Error.WriteLine($"Error: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
             }
         }
     }
@@ -88,7 +89,7 @@ public class StockDataMcpServer
                 Error = new McpError
                 {
                     Code = -32603,
-                    Message = ex.Message
+                    Message = SensitiveDataSanitizer.Sanitize(ex.Message)
                 }
             };
         }

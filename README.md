@@ -60,7 +60,7 @@ StockData.Net is an MCP server that brings comprehensive financial market data t
 
 **Get financial data in your AI assistant in just 5 minutes!**
 
-1. **Download the latest release** from [GitHub Releases](https://github.com/your-org/FinanceMCP/releases)
+1. **Download the latest release** from [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)
    - Look for `StockData.Net.McpServer-{VERSION}-win-x64.zip`
 
 2. **Extract the files** to a folder like `C:\Tools\StockData.Net\`
@@ -97,7 +97,7 @@ Once configured, ask your AI assistant:
 
 **Steps:**
 
-1. Visit the [GitHub Releases page](https://github.com/your-org/FinanceMCP/releases)
+1. Visit the [GitHub Releases page](https://github.com/browmi03/StockData.Net/releases)
 
 2. Download the latest `StockData.Net.McpServer-{VERSION}-win-x64.zip` file
 
@@ -183,16 +183,7 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -240,16 +231,7 @@ Ensure the provider is enabled in `appsettings.json`:
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -297,16 +279,7 @@ Ensure the provider is enabled in `appsettings.json`:
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_actual_alphavantage_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -391,8 +364,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 ✅ **DO:**
 
-- Use `dotnet user-secrets` for development (source code directory)
-- For deployed apps, set API keys in local `C:\Tools\StockData.Net\appsettings.json`
+- Set API keys in local `C:\Tools\StockData.Net\appsettings.json`
 - Keep placeholder values like `"<injected-from-secrets>"` in committed config files
 - Restrict local file permissions on deployed config files when using paid API keys
 - Rotate paid API keys immediately if you suspect exposure
@@ -411,24 +383,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 ### Quick Setup
 
-**For Development (Source Code):**
-
-Run these commands from the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-# Initialize user secrets (only needed once)
-dotnet user-secrets init
-
-# Set API keys for all providers
-dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_finnhub_key"
-dotnet user-secrets set "Providers:Polygon:ApiKey" "your_polygon_key"
-dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_alphavantage_key"
-
-# List all secrets to verify (keys are hidden)
-dotnet user-secrets list
-```
-
-**For Deployed App (C:\Tools\StockData.Net\):**
+**For Local Deployment (C:\Tools\StockData.Net\):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
 
@@ -508,7 +463,7 @@ The project uses GitHub Actions for automated release management.
 
 - **Trigger:** Push a Git tag starting with `v` (e.g., `v1.0.0`)
 - **Output:** Automated release with compiled Windows binary
-- **Access:** Download from [GitHub Releases](https://github.com/your-org/FinanceMCP/releases)
+- **Access:** Download from [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)
 
 ### Latest Release
 
