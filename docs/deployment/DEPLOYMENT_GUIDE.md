@@ -64,6 +64,45 @@ You should see output indicating the MCP server is starting. Press `Ctrl+C` to s
 Listening for MCP requests on stdio...
 ```
 
+#### Step 2.5: Configure API Keys (Local Option A)
+
+For local deployments in `C:\Tools\StockData.Net\`, store provider API keys directly in:
+
+`C:\Tools\StockData.Net\appsettings.json`
+
+Example:
+
+```json
+{
+  "providers": {
+    "finnhub": {
+      "enabled": true,
+      "apiKey": "your_finnhub_key"
+    },
+    "polygon": {
+      "enabled": true,
+      "apiKey": "your_polygon_key"
+    },
+    "alphavantage": {
+      "enabled": true,
+      "apiKey": "your_alphavantage_key"
+    }
+  }
+}
+```
+
+Security notes:
+
+- Keep this `appsettings.json` local and private.
+- Do not store the deployment folder in cloud-synced paths (OneDrive, Google Drive, Dropbox).
+- If you use paid-tier API keys, lock file permissions to your user account:
+
+```powershell
+icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERNAME%:(R)"
+```
+
+- Rotate paid API keys immediately if you suspect exposure.
+
 ### Step 3: Configure VS Code
 
 1. **Open VS Code**
