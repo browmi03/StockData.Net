@@ -88,6 +88,6 @@ CI runs gitleaks on push and pull request in `test.yml` and fails the workflow i
 ## Developer Provisioning Checklist
 
 - Request provider API keys from an authorized owner.
-- Set local secrets with `dotnet user-secrets` only.
+- Configure provider API keys in local deployment `appsettings.json` only.
 - Keep `appsettings.json` placeholders unchanged in source control.
 - Never print, log, or commit key values.
