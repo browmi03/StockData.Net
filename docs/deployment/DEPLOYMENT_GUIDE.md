@@ -27,7 +27,7 @@ This guide provides step-by-step instructions for deploying the binary and confi
 
 ## Quick Start
 
-1. Download `StockData.Net.McpServer-{VERSION}-win-x64.zip` from [Releases](https://github.com/your-org/FinanceMCP/releases)
+1. Download `StockData.Net.McpServer-{VERSION}-win-x64.zip` from [Releases](https://github.com/browmi03/StockData.Net/releases)
 2. Extract to `C:\Tools\StockData.Net\`
 3. Configure VS Code `settings.json` (see below)
 4. Restart VS Code and test in Copilot Chat
@@ -151,27 +151,6 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 - Verify no firewall is blocking stdio communication
 - Check that Copilot extension is installed and enabled
 
-
-4. **Test:** `What is the current P/E ratio for Tesla?`
-
-#### Troubleshooting (macOS)
-
-**Error: "Cannot be opened because the developer cannot be verified"**
-- Use Gatekeeper workaround above:
-  ```bash
-  sudo xattr -d com.apple.quarantine ~/Applications/StockData/StockData.Net.McpServer
-  ```
-
-**Error: "Command not found" in VS Code**
-- Verify the full path is correct: `echo ~/Applications/StockData/StockData.Net.McpServer`
-- Use the full absolute path in settings.json
-- Restart VS Code completely
-
-**MCP server not responding**
-- Check VS Code output: `View` → `Output` → Select "Extension Host" from dropdown
-- Verify binary runs manually in Terminal
-- Try restarting VS Code with `Cmd+Shift+P` → `Developer: Reload Window`
-
 ---
 
 ## Source-Based Deployment (Alternative)
@@ -187,8 +166,8 @@ If you prefer **not to use a compiled binary**, you can run the MCP server direc
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-org/FinanceMCP.git
-   cd FinanceMCP
+   git clone https://github.com/browmi03/StockData.Net.git
+   cd StockData.Net
    ```
 
 2. **Build the solution:**
@@ -283,4 +262,4 @@ After completing deployment, verify:
 - [Release Checklist](./RELEASE_CHECKLIST.md) - Release validation procedures
 - [README: Quick Start](../../README.md#quick-start)
 - [README: Add MCP Server to VS Code](../../README.md#add-mcp-server-to-vs-code)
-- [GitHub Releases](https://github.com/your-org/FinanceMCP/releases)
+- [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)

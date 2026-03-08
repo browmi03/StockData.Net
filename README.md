@@ -60,7 +60,7 @@ StockData.Net is an MCP server that brings comprehensive financial market data t
 
 **Get financial data in your AI assistant in just 5 minutes!**
 
-1. **Download the latest release** from [GitHub Releases](https://github.com/your-org/FinanceMCP/releases)
+1. **Download the latest release** from [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)
    - Look for `StockData.Net.McpServer-{VERSION}-win-x64.zip`
 
 2. **Extract the files** to a folder like `C:\Tools\StockData.Net\`
@@ -97,7 +97,7 @@ Once configured, ask your AI assistant:
 
 **Steps:**
 
-1. Visit the [GitHub Releases page](https://github.com/your-org/FinanceMCP/releases)
+1. Visit the [GitHub Releases page](https://github.com/browmi03/StockData.Net/releases)
 
 2. Download the latest `StockData.Net.McpServer-{VERSION}-win-x64.zip` file
 
@@ -508,7 +508,7 @@ The project uses GitHub Actions for automated release management.
 
 - **Trigger:** Push a Git tag starting with `v` (e.g., `v1.0.0`)
 - **Output:** Automated release with compiled Windows binary
-- **Access:** Download from [GitHub Releases](https://github.com/your-org/FinanceMCP/releases)
+- **Access:** Download from [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)
 
 ### Latest Release
 
