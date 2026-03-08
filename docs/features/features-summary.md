@@ -47,6 +47,7 @@ Transform the Yahoo Finance MCP Server into a flexible, multi-source stock infor
 | --- | --- | --- |
 | **Phase 1: Foundation & Parity** | ✅ Complete | All 10 MCP tools operational |
 | **Phase 2: Multi-Source Failover** | ✅ Complete | Circuit breaker, failover chain, health monitoring |
+| **Symbol Translation** | ✅ Complete | Provider-aware symbol format conversion (13/13 AC, 40 tests) |
 | **Phase 3: News Deduplication** | ⏳ Planned | Foundation ready, implementation pending |
 
 ---
@@ -166,7 +167,7 @@ When a provider fails, the system automatically:
   "newsDeduplication": {
     "enabled": true,
     "similarityThreshold": 0.85,
-    "windowMinutes": 24,
+    "timestampWindowHours": 24,
     "compareContent": true
   }
 }
@@ -230,11 +231,10 @@ See [docs/architecture/stock-data-aggregation-canonical-architecture.md](../arch
 
 | Category | Count | Passing | Pass Rate |
 | --- | --- | --- | --- |
-| **Unit Tests** | 86 | 86 | 100% ✅ |
-| **MCP Server Tests** | 31 | 31 | 100% ✅ |
-| **Integration Tests** | 24 | 24 | 100% ✅ |
-| **Phase 2 Additions** | 31 | 31 | 100% ✅ |
-| **TOTAL** | **172** | **172** | **100% ✅** |
+| **Unit Tests** | 369 | 369 | 100% ✅ |
+| **MCP Server Tests** | 70 | 70 | 100% ✅ |
+| **Integration Suite** | Included | Included | 100% ✅ |
+| **TOTAL** | **439** | **439** | **100% ✅** |
 
 **Build Status**: ✅ Success (zero compilation errors)
 
