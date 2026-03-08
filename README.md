@@ -183,14 +183,30 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 **Configuration:**
 
-1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+**For Development (Source Code):**
+
+From the `StockData.Net/StockData.Net.McpServer` directory:
 
 ```powershell
 dotnet user-secrets init
 dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_here"
 ```
 
-2. Enable the provider in `appsettings.json`:
+**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
+
+```json
+{
+  "providers": {
+    "finnhub": {
+      "apiKey": "your_actual_finnhub_api_key_here"
+    }
+  }
+}
+```
+
+Ensure the provider is enabled in `appsettings.json`:
 
 
 ```json
@@ -224,14 +240,30 @@ dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_
 
 **Configuration:**
 
-1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+**For Development (Source Code):**
+
+From the `StockData.Net/StockData.Net.McpServer` directory:
 
 ```powershell
 dotnet user-secrets init
 dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_here"
 ```
 
-2. Enable the provider in `appsettings.json`:
+**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
+
+```json
+{
+  "providers": {
+    "polygon": {
+      "apiKey": "your_actual_polygon_api_key_here"
+    }
+  }
+}
+```
+
+Ensure the provider is enabled in `appsettings.json`:
 
 
 ```json
@@ -265,14 +297,30 @@ dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_
 
 **Configuration:**
 
-1. Store your API key securely using dotnet user-secrets (from `StockData.Net/StockData.Net.McpServer` directory):
+**For Development (Source Code):**
+
+From the `StockData.Net/StockData.Net.McpServer` directory:
 
 ```powershell
 dotnet user-secrets init
 dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_actual_alphavantage_api_key_here"
 ```
 
-2. Enable the provider in `appsettings.json`:
+**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
+
+```json
+{
+  "providers": {
+    "alphavantage": {
+      "apiKey": "your_actual_alphavantage_api_key_here"
+    }
+  }
+}
+```
+
+Ensure the provider is enabled in `appsettings.json`:
 
 
 ```json
@@ -343,28 +391,29 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 ✅ **DO:**
 
-- Use `dotnet user-secrets` for local development
-- Use GitHub Secrets plus ephemeral `secrets.json` materialization for CI integration tests
-- Use GitHub Secrets for CI/CD pipelines (see [docs/deployment/GITHUB_SECRETS_VALIDATION.md](docs/deployment/GITHUB_SECRETS_VALIDATION.md))
-- Use Azure Key Vault or similar for production deployments (see [docs/security/security-summary.md](docs/security/security-summary.md))
+- Use `dotnet user-secrets` for development (source code directory)
+- For deployed apps, set API keys in local `C:\Tools\StockData.Net\appsettings.json`
 - Keep placeholder values like `"<injected-from-secrets>"` in committed config files
-- Keep CI logs secret-safe by masking provider keys before test execution
-- Keep repository secret scanning enabled in CI (gitleaks)
+- Restrict local file permissions on deployed config files when using paid API keys
+- Rotate paid API keys immediately if you suspect exposure
+- Store API keys securely and never share them publicly
 
 ❌ **DON'T:**
 
 - Never commit real API keys to source control
 - Never include API keys in screenshots or documentation
 - Never share API keys via email or chat
-- Never hardcode API keys in `appsettings.json` or `appsettings.Development.json`
+- Never commit real API keys in repository `appsettings.json` files
 
 **Fail-Fast Validation:** If an enabled provider has a missing or placeholder API key, the server will refuse to start and display a clear error message.
 
 ---
 
-### Quick Setup Script
+### Quick Setup
 
-For rapid local development setup, run these commands from the `StockData.Net/StockData.Net.McpServer` directory:
+**For Development (Source Code):**
+
+Run these commands from the `StockData.Net/StockData.Net.McpServer` directory:
 
 ```powershell
 # Initialize user secrets (only needed once)
@@ -379,7 +428,27 @@ dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_alphavantage_key"
 dotnet user-secrets list
 ```
 
-**Note:** Replace `"your_*_key"` with your actual API keys. The secrets are stored securely outside the project directory.
+**For Deployed App (C:\Tools\StockData.Net\):**
+
+Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
+
+```json
+{
+  "providers": {
+    "finnhub": {
+      "apiKey": "your_finnhub_key"
+    },
+    "polygon": {
+      "apiKey": "your_polygon_key"
+    },
+    "alphavantage": {
+      "apiKey": "your_alphavantage_key"
+    }
+  }
+}
+```
+
+**Note:** Replace `"your_*_key"` with your actual API keys. For paid tiers, lock down file permissions on `appsettings.json` and avoid storing the file in cloud-synced folders.
 
 ---
 

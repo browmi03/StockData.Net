@@ -3,3 +3,7 @@ TestResults/
 
 # GitHub agents
 .github/agents/
+
+# Local secrets (API keys)
+secrets.json
+*.secrets.json
