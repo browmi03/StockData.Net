@@ -338,7 +338,6 @@ public class StockDataIntegrationTests
         Assert.IsNotNull(result);
         
         // Debug: Log the first 200 characters of the result to see what we're getting
-        Console.WriteLine($"Period: {period}, Result (first 200 chars): {(result.Length > 200 ? result.Substring(0, 200) : result)}");
         
         // If result contains error or no data message, log it and skip JSON parsing
         if (result.Contains("Error", StringComparison.OrdinalIgnoreCase) || 
