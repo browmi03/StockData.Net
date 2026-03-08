@@ -14,7 +14,9 @@ var builder = Host.CreateApplicationBuilder(args);
 
 // Load configuration
 var configLoader = new ConfigurationLoader();
-var configPath = args.Length > 0 ? args[0] : null;
+var configPath = args.Length > 0
+    ? args[0]
+    : Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 var config = await configLoader.LoadConfigurationAsync(configPath);
 
 // Register configuration
