@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using StockData.Net.Models;
+using StockData.Net.Security;
 
 namespace StockData.Net;
 
@@ -201,7 +202,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting historical stock prices for {ticker}: {ex.Message}";
+            return $"Error: getting historical stock prices for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -242,7 +243,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting stock information for {ticker}: {ex.Message}";
+            return $"Error: getting stock information for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -284,7 +285,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting news for {ticker}: {ex.Message}";
+            return $"Error: getting news for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -359,7 +360,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting market news: {ex.Message}";
+            return $"Error: getting market news: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -473,7 +474,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting stock actions for {ticker}: {ex.Message}";
+            return $"Error: getting stock actions for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -548,7 +549,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting financial statement for {ticker}: {ex.Message}";
+            return $"Error: getting financial statement for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -626,7 +627,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting holder info for {ticker}: {ex.Message}";
+            return $"Error: getting holder info for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -663,7 +664,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting option expiration dates for {ticker}: {ex.Message}";
+            return $"Error: getting option expiration dates for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -740,7 +741,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting option chain for {ticker}: {ex.Message}";
+            return $"Error: getting option chain for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 
@@ -831,7 +832,7 @@ public class YahooFinanceClient : IYahooFinanceClient
         }
         catch (Exception ex)
         {
-            return $"Error: getting recommendations for {ticker}: {ex.Message}";
+            return $"Error: getting recommendations for {ticker}: {SensitiveDataSanitizer.Sanitize(ex.Message)}";
         }
     }
 

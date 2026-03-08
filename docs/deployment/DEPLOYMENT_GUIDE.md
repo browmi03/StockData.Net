@@ -1,6 +1,7 @@
+
 # Deployment Guide
 
-**Deploy StockData.Net MCP Server (Windows Only)**
+## Deploy StockData.Net MCP Server (Windows Only)
 
 **Version:** 1.0.0 (2026-02-28)
 
@@ -40,12 +41,16 @@ This guide provides step-by-step instructions for deploying the binary and confi
 
 1. **Download** `StockData.Net.McpServer-1.0.0-win-x64.zip` from releases
 2. **Extract** to a stable directory. Recommended:
-   ```
+
+  ```text
    C:\Tools\StockData.Net\
+
    ```
 3. **Verify** extraction:
+
    ```powershell
    dir C:\Tools\StockData.Net\
+
    ```
    You should see `StockData.Net.McpServer.exe` in the directory.
 
@@ -60,8 +65,10 @@ C:\Tools\StockData.Net\StockData.Net.McpServer.exe
 You should see output indicating the MCP server is starting. Press `Ctrl+C` to stop it.
 
 **Expected Output:**
-```
+
+```text
 Listening for MCP requests on stdio...
+
 ```
 
 #### Step 2.5: Configure API Keys (Local Option A)
@@ -122,6 +129,7 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 
 **Important Notes:**
 - Use **forward slashes** (`/`) or **double backslashes** (`\\`) in the path
+
 - The `args` array should be empty `[]`
 - Save the settings file (`Ctrl+S`)
 
@@ -136,13 +144,16 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 
 ## Troubleshooting
 
-**Error: "Cannot find executable"**
+### Error: "Cannot find executable"
+
 - Verify the path in settings.json exists: `dir C:\Tools\StockData.Net\`
 - Use absolute path, not relative path
 - Restart VS Code after changes
 
-**Error: "MCP server failed to start"**
+### Error: "MCP server failed to start"
+
 - Test binary manually: `C:\Tools\StockData.Net\StockData.Net.McpServer.exe`
+
 - Check Windows Defender/antivirus hasn't blocked the executable
 - Verify .NET 8.0+ is installed (even though binary is self-contained)
 
@@ -157,7 +168,7 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 
 If you prefer **not to use a compiled binary**, you can run the MCP server directly from source:
 
-### Prerequisites
+### Development Prerequisites
 
 - **Git** installed
 - **.NET 8.0+** installed (check: `dotnet --version`)
