@@ -194,13 +194,13 @@ dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_
 
 **For Deployed App (e.g., C:\Tools\StockData.Net\):**
 
-Create a `secrets.json` file in the application directory:
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
 ```json
 {
-  "Providers": {
-    "Finnhub": {
-      "ApiKey": "your_actual_finnhub_api_key_here"
+  "providers": {
+    "finnhub": {
+      "apiKey": "your_actual_finnhub_api_key_here"
     }
   }
 }
@@ -251,13 +251,13 @@ dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_
 
 **For Deployed App (e.g., C:\Tools\StockData.Net\):**
 
-Add to your `secrets.json` file in the application directory:
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
 ```json
 {
-  "Providers": {
-    "Polygon": {
-      "ApiKey": "your_actual_polygon_api_key_here"
+  "providers": {
+    "polygon": {
+      "apiKey": "your_actual_polygon_api_key_here"
     }
   }
 }
@@ -308,13 +308,13 @@ dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_actual_alphavantag
 
 **For Deployed App (e.g., C:\Tools\StockData.Net\):**
 
-Add to your `secrets.json` file in the application directory:
+Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
 ```json
 {
-  "Providers": {
-    "AlphaVantage": {
-      "ApiKey": "your_actual_alphavantage_api_key_here"
+  "providers": {
+    "alphavantage": {
+      "apiKey": "your_actual_alphavantage_api_key_here"
     }
   }
 }
@@ -392,9 +392,10 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 ✅ **DO:**
 
 - Use `dotnet user-secrets` for development (source code directory)
-- Use a local `secrets.json` file for deployed applications (e.g., C:\Tools\StockData.Net\)
-- Add `secrets.json` to `.gitignore` to prevent accidental commits
+- For deployed apps, set API keys in local `C:\Tools\StockData.Net\appsettings.json`
 - Keep placeholder values like `"<injected-from-secrets>"` in committed config files
+- Restrict local file permissions on deployed config files when using paid API keys
+- Rotate paid API keys immediately if you suspect exposure
 - Store API keys securely and never share them publicly
 
 ❌ **DON'T:**
@@ -402,7 +403,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 - Never commit real API keys to source control
 - Never include API keys in screenshots or documentation
 - Never share API keys via email or chat
-- Never hardcode API keys in `appsettings.json` or `appsettings.Development.json`
+- Never commit real API keys in repository `appsettings.json` files
 
 **Fail-Fast Validation:** If an enabled provider has a missing or placeholder API key, the server will refuse to start and display a clear error message.
 
@@ -429,25 +430,25 @@ dotnet user-secrets list
 
 **For Deployed App (C:\Tools\StockData.Net\):**
 
-Create a `secrets.json` file in `C:\Tools\StockData.Net\` with your API keys:
+Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
 
 ```json
 {
-  "Providers": {
-    "Finnhub": {
-      "ApiKey": "your_finnhub_key"
+  "providers": {
+    "finnhub": {
+      "apiKey": "your_finnhub_key"
     },
-    "Polygon": {
-      "ApiKey": "your_polygon_key"
+    "polygon": {
+      "apiKey": "your_polygon_key"
     },
-    "AlphaVantage": {
-      "ApiKey": "your_alphavantage_key"
+    "alphavantage": {
+      "apiKey": "your_alphavantage_key"
     }
   }
 }
 ```
 
-**Note:** Replace `"your_*_key"` with your actual API keys. Keep `secrets.json` private and never commit it to source control.
+**Note:** Replace `"your_*_key"` with your actual API keys. For paid tiers, lock down file permissions on `appsettings.json` and avoid storing the file in cloud-synced folders.
 
 ---
 
