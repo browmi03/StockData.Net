@@ -35,10 +35,14 @@ public class ConfigurationLoaderTests
         // Assert
         Assert.IsNotNull(config);
         Assert.AreEqual("1.0", config.Version);
-        Assert.HasCount(1, config.Providers);
+        Assert.HasCount(4, config.Providers);
         Assert.AreEqual("yahoo_finance", config.Providers[0].Id);
         Assert.AreEqual("YahooFinanceProvider", config.Providers[0].Type);
         Assert.IsTrue(config.Providers[0].Enabled);
+        Assert.AreEqual("finnhub", config.Providers[1].Id);
+        Assert.AreEqual("polygon", config.Providers[2].Id);
+        Assert.AreEqual("alphavantage", config.Providers[3].Id);
+        Assert.IsNotNull(config.ProviderCredentials);
         Assert.IsNotNull(config.Routing);
         Assert.IsNotNull(config.NewsDeduplication);
         Assert.IsNotNull(config.CircuitBreaker);
@@ -119,6 +123,84 @@ public class ConfigurationLoaderTests
         Assert.AreEqual("TestProvider", config.Providers[0].Type);
         Assert.IsTrue(config.NewsDeduplication.Enabled);
         Assert.AreEqual(0.85, config.NewsDeduplication.SimilarityThreshold);
+    }
+
+    [TestMethod]
+    public async Task LoadConfigurationAsync_WithProviderCredentialSections_MergesApiKeysIntoProviderSettings()
+    {
+        var configPath = Path.Combine(_testConfigDirectory, "provider_credential_sections.json");
+        var configJson = @"{
+            ""version"": ""1.0"",
+            ""providerCredentials"": {
+                ""finnhub"": {
+                    ""apiKey"": ""finnhub-from-section"",
+                    ""baseUrl"": ""https://finnhub.io/api/v1""
+                },
+                ""polygon"": {
+                    ""apiKey"": ""polygon-from-section""
+                },
+                ""alphaVantage"": {
+                    ""apiKey"": ""alpha-from-section"",
+                    ""baseUrl"": ""https://www.alphavantage.co""
+                }
+            },
+            ""providers"": [
+                {
+                    ""id"": ""finnhub"",
+                    ""type"": ""FinnhubProvider"",
+                    ""enabled"": true,
+                    ""priority"": 1,
+                    ""settings"": {},
+                    ""healthCheck"": {
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }
+                },
+                {
+                    ""id"": ""polygon"",
+                    ""type"": ""PolygonProvider"",
+                    ""enabled"": true,
+                    ""priority"": 2,
+                    ""settings"": {},
+                    ""healthCheck"": {
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }
+                },
+                {
+                    ""id"": ""alphavantage"",
+                    ""type"": ""AlphaVantageProvider"",
+                    ""enabled"": true,
+                    ""priority"": 3,
+                    ""settings"": {},
+                    ""healthCheck"": {
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }
+                }
+            ],
+            ""routing"": {
+                ""defaultStrategy"": ""PrimaryWithFailover"",
+                ""dataTypeRouting"": {}
+            }
+        }";
+
+        await File.WriteAllTextAsync(configPath, configJson);
+
+        var config = await _loader.LoadConfigurationAsync(configPath);
+
+        var finnhub = config.Providers.Single(p => p.Id == "finnhub");
+        var polygon = config.Providers.Single(p => p.Id == "polygon");
+        var alpha = config.Providers.Single(p => p.Id == "alphavantage");
+
+        Assert.AreEqual("finnhub-from-section", finnhub.Settings["apiKey"]);
+        Assert.AreEqual("https://finnhub.io/api/v1", finnhub.Settings["baseUrl"]);
+        Assert.AreEqual("polygon-from-section", polygon.Settings["apiKey"]);
+        Assert.AreEqual("alpha-from-section", alpha.Settings["apiKey"]);
+        Assert.AreEqual("https://www.alphavantage.co", alpha.Settings["baseUrl"]);
     }
 
     [TestMethod]
