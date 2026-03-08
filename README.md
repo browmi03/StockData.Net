@@ -183,16 +183,7 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_actual_finnhub_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -240,16 +231,7 @@ Ensure the provider is enabled in `appsettings.json`:
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:Polygon:ApiKey" "your_actual_polygon_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -297,16 +279,7 @@ Ensure the provider is enabled in `appsettings.json`:
 
 **Configuration:**
 
-**For Development (Source Code):**
-
-From the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-dotnet user-secrets init
-dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_actual_alphavantage_api_key_here"
-```
-
-**For Deployed App (e.g., C:\Tools\StockData.Net\):**
+**Configuration (Local appsettings.json):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 
@@ -391,8 +364,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 ✅ **DO:**
 
-- Use `dotnet user-secrets` for development (source code directory)
-- For deployed apps, set API keys in local `C:\Tools\StockData.Net\appsettings.json`
+- Set API keys in local `C:\Tools\StockData.Net\appsettings.json`
 - Keep placeholder values like `"<injected-from-secrets>"` in committed config files
 - Restrict local file permissions on deployed config files when using paid API keys
 - Rotate paid API keys immediately if you suspect exposure
@@ -411,24 +383,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 ### Quick Setup
 
-**For Development (Source Code):**
-
-Run these commands from the `StockData.Net/StockData.Net.McpServer` directory:
-
-```powershell
-# Initialize user secrets (only needed once)
-dotnet user-secrets init
-
-# Set API keys for all providers
-dotnet user-secrets set "Providers:Finnhub:ApiKey" "your_finnhub_key"
-dotnet user-secrets set "Providers:Polygon:ApiKey" "your_polygon_key"
-dotnet user-secrets set "Providers:AlphaVantage:ApiKey" "your_alphavantage_key"
-
-# List all secrets to verify (keys are hidden)
-dotnet user-secrets list
-```
-
-**For Deployed App (C:\Tools\StockData.Net\):**
+**For Local Deployment (C:\Tools\StockData.Net\):**
 
 Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
 
