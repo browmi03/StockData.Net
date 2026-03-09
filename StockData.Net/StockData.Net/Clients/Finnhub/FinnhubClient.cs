@@ -90,11 +90,17 @@ public sealed class FinnhubClient : IFinnhubClient
 
     public async Task<List<FinnhubCandle>> GetHistoricalPricesAsync(
         string symbol,
+        string resolution,
         DateTime from,
         DateTime to,
         CancellationToken cancellationToken = default)
     {
         ValidateSymbol(symbol);
+        if (string.IsNullOrWhiteSpace(resolution))
+        {
+            throw new ArgumentException("Resolution cannot be empty or whitespace.", nameof(resolution));
+        }
+
         if (from > to)
         {
             throw new ArgumentException("From date cannot be after To date.", nameof(from));
@@ -108,9 +114,10 @@ public sealed class FinnhubClient : IFinnhubClient
             var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
             var fromUnix = new DateTimeOffset(from.ToUniversalTime()).ToUnixTimeSeconds();
             var toUnix = new DateTimeOffset(to.ToUniversalTime()).ToUnixTimeSeconds();
+            var encodedResolution = Uri.EscapeDataString(resolution.Trim().ToUpperInvariant());
 
             var requestUri =
-                $"stock/candle?symbol={encodedSymbol}&resolution=D&from={fromUnix}&to={toUnix}&token={apiKey}";
+                $"stock/candle?symbol={encodedSymbol}&resolution={encodedResolution}&from={fromUnix}&to={toUnix}&token={apiKey}";
 
             using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
             if (response.StatusCode == HttpStatusCode.NotFound)

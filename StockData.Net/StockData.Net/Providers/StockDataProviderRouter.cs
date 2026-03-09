@@ -656,6 +656,7 @@ public class StockDataProviderRouter
         return exception switch
         {
             ArgumentException => ProviderErrorType.InvalidRequest,
+            NotSupportedException => ProviderErrorType.InvalidRequest,
             TaskCanceledException or TimeoutException => ProviderErrorType.Timeout,
             HttpRequestException httpEx when httpEx.StatusCode.HasValue && (int)httpEx.StatusCode.Value == 429 
                 => ProviderErrorType.RateLimitExceeded,

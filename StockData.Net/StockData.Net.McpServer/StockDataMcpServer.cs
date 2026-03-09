@@ -143,8 +143,8 @@ public class StockDataMcpServer
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
-                "get_yahoo_finance_news",
-                "Get news for a given ticker symbol from yahoo finance.",
+                "get_finance_news",
+                "Get news for a given ticker symbol using the configured finance data providers.",
                 new
                 {
                     type = "object",
@@ -272,7 +272,7 @@ public class StockDataMcpServer
                 GetRequiredString(arguments, "ticker"),
                 cancellationToken),
             
-            "get_yahoo_finance_news" => await _router.GetNewsAsync(
+            "get_finance_news" => await _router.GetNewsAsync(
                 GetRequiredString(arguments, "ticker"),
                 cancellationToken),
             

@@ -12,7 +12,7 @@ namespace StockData.Net.McpServer.Tests;
 public class NewsAggregationMcpServerTests
 {
     [TestMethod]
-    public async Task HandleRequestAsync_GetYahooFinanceNews_WithAggregationEnabled_ReturnsDeduplicatedResponse()
+    public async Task HandleRequestAsync_GetFinanceNews_WithAggregationEnabled_ReturnsDeduplicatedResponse()
     {
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
@@ -29,7 +29,7 @@ public class NewsAggregationMcpServerTests
         var server = new StockDataMcpServer(router);
 
         var requestJson = JsonDocument.Parse(@"{
-            ""name"": ""get_yahoo_finance_news"",
+            ""name"": ""get_finance_news"",
             ""arguments"": {
                 ""ticker"": ""AAPL""
             }
