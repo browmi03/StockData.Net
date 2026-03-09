@@ -85,12 +85,12 @@ public sealed class FinnhubProvider : IStockDataProvider
 
     public Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetMarketNewsAsync), availableOnPaidTier: true);
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetMarketNewsAsync), availableOnPaidTier: false);
     }
 
     public Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetStockActionsAsync), availableOnPaidTier: false);
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetStockActionsAsync), availableOnPaidTier: true);
     }
 
     public Task<string> GetFinancialStatementAsync(
@@ -129,7 +129,7 @@ public sealed class FinnhubProvider : IStockDataProvider
         int monthsBack = 12,
         CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetRecommendationsAsync), availableOnPaidTier: true);
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetRecommendationsAsync), availableOnPaidTier: false);
     }
 
     public async Task<bool> GetHealthStatusAsync(CancellationToken cancellationToken = default)

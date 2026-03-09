@@ -21,7 +21,7 @@ public class FinnhubProviderTests
     }
 
     [TestMethod]
-    public async Task GetMarketNewsAsync_ThrowsTierAwareNotSupportedException_WithPaidTierFlag()
+    public async Task GetMarketNewsAsync_ThrowsTierAwareNotSupportedException_WithNoPaidTierFlag()
     {
         TierAwareNotSupportedException ex;
         try
@@ -37,11 +37,11 @@ public class FinnhubProviderTests
 
         Assert.AreEqual("finnhub", ex.ProviderId);
         Assert.AreEqual("GetMarketNewsAsync", ex.MethodName);
-        Assert.IsTrue(ex.AvailableOnPaidTier);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
-    public async Task GetStockActionsAsync_ThrowsTierAwareNotSupportedException_WithNoPaidTierFlag()
+    public async Task GetStockActionsAsync_ThrowsTierAwareNotSupportedException_WithPaidTierFlag()
     {
         TierAwareNotSupportedException ex;
         try
@@ -57,7 +57,7 @@ public class FinnhubProviderTests
 
         Assert.AreEqual("finnhub", ex.ProviderId);
         Assert.AreEqual("GetStockActionsAsync", ex.MethodName);
-        Assert.IsFalse(ex.AvailableOnPaidTier);
+        Assert.IsTrue(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
@@ -103,10 +103,25 @@ public class FinnhubProviderTests
     [TestMethod]
     public async Task TierAwareExceptions_UseDistinctMessageFormats_ForPaidAndUnavailableFeatures()
     {
-        TierAwareNotSupportedException paidTierException;
+        TierAwareNotSupportedException noTierException;
         try
         {
             await _provider.GetMarketNewsAsync();
+            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+            return;
+        }
+        catch (TierAwareNotSupportedException thrown)
+        {
+            noTierException = thrown;
+        }
+
+        Assert.IsFalse(noTierException.Message.Contains("free tier", StringComparison.Ordinal));
+        Assert.IsFalse(noTierException.Message.Contains("paid subscription", StringComparison.Ordinal));
+
+        TierAwareNotSupportedException paidTierException;
+        try
+        {
+            await _provider.GetStockActionsAsync("AAPL");
             Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
             return;
         }
@@ -117,20 +132,6 @@ public class FinnhubProviderTests
 
         StringAssert.Contains(paidTierException.Message, "on the free tier");
         StringAssert.Contains(paidTierException.Message, "paid subscription");
-
-        TierAwareNotSupportedException noTierException;
-        try
-        {
-            await _provider.GetStockActionsAsync("AAPL");
-            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
-            return;
-        }
-        catch (TierAwareNotSupportedException thrown)
-        {
-            noTierException = thrown;
-        }
-
-        Assert.IsFalse(noTierException.Message.Contains("free tier", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -174,7 +175,7 @@ public class FinnhubProviderTests
     }
 
     [TestMethod]
-    public async Task GetRecommendationsAsync_ThrowsTierAwareNotSupportedException_WithPaidTierFlag()
+    public async Task GetRecommendationsAsync_ThrowsTierAwareNotSupportedException_WithNoPaidTierFlag()
     {
         TierAwareNotSupportedException ex;
         try
@@ -190,7 +191,7 @@ public class FinnhubProviderTests
 
         Assert.AreEqual("finnhub", ex.ProviderId);
         Assert.AreEqual("GetRecommendationsAsync", ex.MethodName);
-        Assert.IsTrue(ex.AvailableOnPaidTier);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
