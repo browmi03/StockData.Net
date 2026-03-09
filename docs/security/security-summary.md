@@ -27,7 +27,7 @@ All critical security gaps from initial review have been resolved. Production de
 
 | Asset | Classification | Owner |
 | --- | --- | --- |
-| API Keys (Finnhub, Polygon, Alpha Vantage, NewsAPI) | Confidential | DevOps/Security Team |
+| API Keys (Finnhub, Alpha Vantage, NewsAPI) | Confidential | DevOps/Security Team |
 | User Stock Queries | Internal | End Users |
 | Cached Session Cookies | Internal | System Runtime |
 | News Article Aggregates | Public | System |
@@ -121,7 +121,7 @@ Yahoo Finance requires 2-step authentication handled transparently:
 
 ### API Key Authentication
 
-Other providers (Finnhub, Polygon, Alpha Vantage, NewsAPI) use API key authentication via headers or query parameters, loaded from environment variables at startup.
+Other providers (Finnhub, Alpha Vantage, NewsAPI) use API key authentication via headers or query parameters, loaded from environment variables at startup.
 
 ## Authorization
 

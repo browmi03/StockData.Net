@@ -10,7 +10,7 @@
 
 ## System Overview
 
-The Stock Data Aggregation system provides a multi-provider architecture for accessing financial market data through the Model Context Protocol (MCP). The system aggregates stock prices, financial statements, news articles, and other market data from multiple providers (Yahoo Finance, Alpha Vantage, Finnhub, Polygon.io) with intelligent routing, automatic failover, and duplicate news suppression.
+The Stock Data Aggregation system provides a multi-provider architecture for accessing financial market data through the Model Context Protocol (MCP). The system aggregates stock prices, financial statements, news articles, and other market data from multiple providers (Yahoo Finance, Alpha Vantage, Finnhub) with intelligent routing, automatic failover, and duplicate news suppression.
 
 ### Key Capabilities
 
