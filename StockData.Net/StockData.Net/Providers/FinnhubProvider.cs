@@ -35,7 +35,8 @@ public sealed class FinnhubProvider : IStockDataProvider
             ValidateTicker(ticker);
 
             var (from, to) = ResolveDateWindow(period);
-            var candles = await _client.GetHistoricalPricesAsync(ticker, from.UtcDateTime, to.UtcDateTime, cancellationToken);
+            var resolution = ResolveResolution(interval);
+            var candles = await _client.GetHistoricalPricesAsync(ticker, resolution, from.UtcDateTime, to.UtcDateTime, cancellationToken);
             return JsonSerializer.Serialize(MapHistoricalPrices(candles));
         }, nameof(GetHistoricalPricesAsync));
     }
@@ -84,40 +85,52 @@ public sealed class FinnhubProvider : IStockDataProvider
 
     public Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetMarketNewsAsync)}");
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetMarketNewsAsync), availableOnPaidTier: false);
     }
 
     public Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetStockActionsAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetStockActionsAsync), availableOnPaidTier: true);
+    }
 
     public Task<string> GetFinancialStatementAsync(
         string ticker,
         FinancialStatementType statementType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetFinancialStatementAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetFinancialStatementAsync), availableOnPaidTier: true);
+    }
 
     public Task<string> GetHolderInfoAsync(
         string ticker,
         HolderType holderType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetHolderInfoAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetHolderInfoAsync), availableOnPaidTier: true);
+    }
 
     public Task<string> GetOptionExpirationDatesAsync(string ticker, CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetOptionExpirationDatesAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetOptionExpirationDatesAsync), availableOnPaidTier: false);
+    }
 
     public Task<string> GetOptionChainAsync(
         string ticker,
         string expirationDate,
         OptionType optionType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetOptionChainAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetOptionChainAsync), availableOnPaidTier: false);
+    }
 
     public Task<string> GetRecommendationsAsync(
         string ticker,
         RecommendationType recommendationType,
         int monthsBack = 12,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetRecommendationsAsync)}"));
+    {
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetRecommendationsAsync), availableOnPaidTier: false);
+    }
 
     public async Task<bool> GetHealthStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -139,6 +152,10 @@ public sealed class FinnhubProvider : IStockDataProvider
             return await operation();
         }
         catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ArgumentException)
         {
             throw;
         }

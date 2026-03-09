@@ -336,4 +336,121 @@ public class StockDataProviderRouterTests
         Assert.AreEqual(expectedResult, result);
         _mockProvider.Verify(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WhenPrimaryThrowsNotSupportedException_ThrowsInvalidRequestWithoutFailover()
+    {
+        // Arrange
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
+        var exception = new NotSupportedException("Operation not supported");
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ThrowsAsync(exception);
+        fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback");
+
+        // Act & Assert
+        NotSupportedException thrown;
+        try
+        {
+            await router.GetStockInfoAsync("AAPL");
+            Assert.Fail("Expected NotSupportedException was not thrown.");
+            return;
+        }
+        catch (NotSupportedException ex)
+        {
+            thrown = ex;
+        }
+
+        Assert.AreSame(exception, thrown);
+        fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WhenPrimaryThrowsTierAwareNotSupportedException_ThrowsInvalidRequestWithoutFailover()
+    {
+        // Arrange
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
+        var exception = new TierAwareNotSupportedException("finnhub", "GetStockInfoAsync", availableOnPaidTier: false);
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ThrowsAsync(exception);
+        fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback");
+
+        // Act & Assert
+        TierAwareNotSupportedException thrown;
+        try
+        {
+            await router.GetStockInfoAsync("AAPL");
+            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+            return;
+        }
+        catch (TierAwareNotSupportedException ex)
+        {
+            thrown = ex;
+        }
+
+        Assert.AreSame(exception, thrown);
+        fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WhenInvalidRequestEncountered_DoesNotAttemptFailover()
+    {
+        // Arrange
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TierAwareNotSupportedException("finnhub", "GetStockInfoAsync", availableOnPaidTier: true));
+
+        // Act & Assert
+        try
+        {
+            await router.GetStockInfoAsync("AAPL");
+            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+        }
+        catch (TierAwareNotSupportedException)
+        {
+            // Expected
+        }
+
+        primary.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private static (StockDataProviderRouter Router, Mock<IStockDataProvider> Primary, Mock<IStockDataProvider> Fallback)
+        CreateStockInfoRouterWithFallback()
+    {
+        var primary = new Mock<IStockDataProvider>();
+        primary.Setup(p => p.ProviderId).Returns("primary_provider");
+        primary.Setup(p => p.ProviderName).Returns("Primary");
+        primary.Setup(p => p.Version).Returns("1.0.0");
+        primary.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var fallback = new Mock<IStockDataProvider>();
+        fallback.Setup(p => p.ProviderId).Returns("fallback_provider");
+        fallback.Setup(p => p.ProviderName).Returns("Fallback");
+        fallback.Setup(p => p.Version).Returns("1.0.0");
+        fallback.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var config = new McpConfiguration
+        {
+            Version = "1.0",
+            Providers =
+            [
+                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, HealthCheck = new HealthCheckConfiguration { Enabled = false } },
+                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+            ],
+            Routing = new RoutingConfiguration
+            {
+                DefaultStrategy = "PrimaryWithFailover",
+                DataTypeRouting = new Dictionary<string, DataTypeRouting>
+                {
+                    ["StockInfo"] = new DataTypeRouting
+                    {
+                        PrimaryProviderId = "primary_provider",
+                        FallbackProviderIds = new List<string> { "fallback_provider" },
+                        TimeoutSeconds = 30
+                    }
+                }
+            },
+            CircuitBreaker = new CircuitBreakerConfiguration { Enabled = false }
+        };
+
+        return (new StockDataProviderRouter(config, new[] { primary.Object, fallback.Object }), primary, fallback);
+    }
 }
