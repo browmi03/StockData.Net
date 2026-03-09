@@ -1,78 +1,54 @@
-# Stock Data Aggregation Canonical Architecture
+# Architecture Overview: Stock Data Aggregation
 
-**Last Updated**: 2026-02-28  
-**Status**: Final (Effective Date: 2026-02-28)
+## Document Info
 
-## 1) Scope, Status, and Final Decisions
+- **Feature Spec**: [Multi-Source Stock Data Aggregation](../features/features-summary.md)
+- **Security Design**: [Security Summary](../security/security-summary.md)
+- **Test Strategy**: [Testing Summary](../testing/testing-summary.md)
+- **Status**: Approved (Effective Feb 28, 2026)
+- **Last Updated**: 2026-02-28
 
-### Scope
+## System Overview
 
-- Canonical architecture for multi-provider stock data aggregation in `FinanceMCP`.
-- Consolidates and supersedes:
-  - `docs/architecture/multi-source-stock-data-aggregation-architecture.md`
-  - `docs/architecture/phase3-news-deduplication-architecture.md`
-- Applies to routing, aggregation, deduplication, configuration, error handling, resilience, and operational behavior.
+The Stock Data Aggregation system provides a multi-provider architecture for accessing financial market data through the Model Context Protocol (MCP). The system aggregates stock prices, financial statements, news articles, and other market data from multiple providers (Yahoo Finance, Alpha Vantage, Finnhub, Polygon.io) with intelligent routing, automatic failover, and duplicate news suppression.
 
-### Status
+### Key Capabilities
 
-- Final
-- Effective date: 2026-02-28
+- **Provider Abstraction**: Pluggable IStockDataProvider interface supporting 10 data operations
+- **Intelligent Routing**: Configurable per-data-type provider selection with automatic failover
+- **Resilience**: Circuit breaker pattern prevents cascading failures across providers
+- **News Aggregation**: Parallel multi-provider retrieval with deduplication using Levenshtein similarity
+- **Configuration-Driven**: JSON-based externalized configuration with environment variable expansion and strict startup validation
 
-### Final decisions (authoritative)
+### Consolidation Notice
 
-1. **Deterministic startup policy**: startup is strict for invalid configuration; no runtime fallback from invalid config.
-2. **Timestamp schema standardization**: dedup time window uses **hours only** (`timestampWindowHours`, integer).
-3. **Default news behavior**: **aggregation + deduplication** is the default for `News` and `MarketNews`.
-4. **Dedup boundary contract**: core uses typed domain models; JSON serialization/deserialization is only at the MCP protocol edge.
-5. **NotFound and all-provider-failure semantics**: `NotFound` is terminal for single-source failover chains and classified distinctly in aggregate mode; all-provider-failure returns deterministic error mapping.
-6. **Open questions resolved**:
-   - News format is standardized to canonical domain model.
-   - Caching is out of scope for this architecture release (reserved extension point only).
-   - Health visibility is provided via MCP tool surface (no separate HTTP endpoint).
-   - Second provider choice is implementation planning, not architecture blocking.
+This architecture consolidates and supersedes:
 
----
+- `docs/architecture/multi-source-stock-data-aggregation-architecture.md`
+- `docs/architecture/phase3-news-deduplication-architecture.md`
 
-## 2) System Context and Architectural Goals
-
-### Context
-
-- The server exposes stock and news capabilities via MCP (JSON-RPC over stdio).
-- Multiple providers are supported through a single abstraction and routing layer.
-- News requires cross-provider aggregation and duplicate suppression.
-
-### Architectural goals
-
-- Keep compatibility with existing MCP tool contracts.
-- Improve availability with provider failover and partial-result aggregation (news).
-- Ensure deterministic, diagnosable startup behavior.
-- Keep domain logic provider-agnostic.
-- Bound latency and resource usage under predictable guardrails.
-
----
-
-## 3) Logical Architecture
+### System Diagram
 
 ```mermaid
 flowchart TB
-    Client[MCP Client]
+    Client[MCP Client]:::blue
 
     subgraph Protocol[Protocol Edge]
-        Handler[MCP Tool Handlers]
-        Serializer[JSON Serialization/Deserialization]
+        Handler[MCP Tool Handlers]:::green
+        Serializer[JSON Serialization/Deserialization]:::green
     end
 
     subgraph Core[Core Domain + Orchestration]
-        Router[StockDataProviderRouter]
-        NewsSvc[News Aggregation Service]
-        Dedup[NewsDeduplicator]
-        Strategy[Similarity Strategy]
-        Errors[Error Classifier/Mapper]
+        Router[StockDataProviderRouter]:::amber
+        NewsSvc[News Aggregation Service]:::amber
+        Dedup[NewsDeduplicator]:::amber
+        Strategy[Similarity Strategy]:::amber
+        Errors[Error Classifier/Mapper]:::amber
     end
 
     subgraph Providers[Provider Adapters]
-        P1[Yahoo Adapter]
-        P2[Additional Provider Adapters]
+        P1[Yahoo Adapter]:::gray
+        P2[Additional Provider Adapters]:::gray
     end
 
     Client --> Handler
@@ -84,329 +60,343 @@ flowchart TB
     Router --> Errors
     Router --> P1
     Router --> P2
+
+    classDef blue fill:#e1f5fe,stroke:#90caf9,color:#1a1a1a
+    classDef green fill:#e8f5e9,stroke:#a5d6a7,color:#1a1a1a
+    classDef amber fill:#fff8e1,stroke:#ffecb3,color:#1a1a1a
+    classDef gray fill:#f5f5f5,stroke:#bdbdbd,color:#1a1a1a
 ```
 
-### Layer responsibilities
+## Architectural Patterns
 
-- **Protocol edge**: MCP transport, JSON parse/format, final error envelope mapping.
-- **Core**: typed routing decisions, failover/aggregation, deduplication, taxonomy mapping.
-- **Provider adapters**: translate external API schemas/errors into canonical domain + canonical error categories.
+- **Strategy Pattern**: IStockDataProvider abstraction allows pluggable provider implementations
+- **Circuit Breaker**: Per-provider circuit breakers prevent cascading failures (Closed → Open → Half-Open state machine)
+- **Chain of Responsibility**: Failover chains execute providers sequentially until one succeeds
+- **Aggregator Pattern**: News aggregation executes providers in parallel and merges results
+- **Template Method**: Routing logic delegates to mode-specific strategies (failover vs aggregation)
+- **Facade**: StockDataProviderRouter simplifies multi-provider complexity for MCP handlers
 
----
+## Components
 
-## 4) Provider Abstraction Contract
+> **Intentional Deviation**: Component specs are documented inline in this architecture overview rather than in separate `docs/architecture/components/` files. The system scope (single-process MCP server with ~10 components) does not warrant individual component design documents. See [ADR-001](decisions/adr-001-consolidate-architecture-documentation.md) for rationale.
 
-### Canonical contract principles
-
-- Providers expose typed domain results in core (not raw JSON strings).
-- Providers must map external errors to canonical categories.
-- Providers must support cancellation and timeout propagation.
-
-### Domain boundary
-
-- Core news pipeline operates on typed `NewsArticle` and `ArticleSource` models.
-- Deduplication input/output is typed collections.
-- JSON serialization occurs only when building MCP response payloads at protocol edge.
-
-### Canonical news domain shape
-
-- `NewsArticle`: `Title`, `Url`, `Publisher`, `PublishedAt`, `Summary`, `RelatedTickers`, `Sources`, `IsMerged`, `MergedCount`.
-- `ArticleSource`: `ProviderId`, `OriginalUrl`, `Publisher`.
-
----
-
-## 5) Routing Modes and Selection Rules
-
-### Modes
-
-- **Failover mode** (default for non-news data types): sequential provider chain, stop on first success.
-- **Aggregation mode** (default for `News` and `MarketNews`): execute providers in parallel, collect all successes, deduplicate, return unified output.
-
-### Selection rules
-
-1. Resolve configured provider chain for requested data type.
-2. Filter disabled providers.
-3. Apply circuit breaker readiness.
-4. Execute according to mode:
-   - Failover: primary → fallback(s).
-   - Aggregation: parallel across chain; partial failures tolerated.
-5. If zero successes:
-   - classify all errors;
-   - produce deterministic failure response (see section 8).
-
----
-
-## 6) News Aggregation & Deduplication Architecture
-
-### Default behavior (canonical)
-
-- `News` and `MarketNews` use **aggregation + deduplication** by default.
-- Aggregation executes concurrently across eligible providers.
-- Deduplication runs after aggregation on typed domain objects.
-
-### Dedup policy
-
-- Strategy: Levenshtein title similarity by default.
-- Threshold default: `0.85`.
-- Timestamp window field: `timestampWindowHours` default `24`.
-- Optional content comparison remains disabled by default (`compareContent=false`).
-- Performance cap: `maxArticlesForComparison=200`.
-
-### Merge policy
-
-- Duplicates are clustered by similarity threshold and time-window eligibility.
-- Earliest `PublishedAt` article is canonical representative.
-- `Sources` contains full provider attribution.
-
----
-
-## 7) Configuration Schema and Startup Validation Policy
-
-### Deterministic startup policy (final)
-
-- If configuration file is **absent**: load canonical built-in defaults and start.
-- If configuration file is **present but invalid** (JSON/schema/env expansion/semantic references): startup **fails immediately**.
-- No fallback-to-default is allowed when an explicit config file is invalid.
-
-### Schema (canonical subset)
-
-```json
-{
-  "version": "1.0",
-  "providers": [
-    {
-      "id": "yahoo_finance",
-      "type": "YahooFinanceProvider",
-      "enabled": true,
-      "priority": 1,
-      "capabilities": ["Prices", "StockInfo", "News", "MarketNews", "Options", "Financials", "Holders", "Recommendations"]
-    }
-  ],
-  "routing": {
-    "defaultStrategy": "PrimaryWithFailover",
-    "dataTypeRouting": {
-      "News": {
-        "aggregateResults": true,
-        "primaryProviderId": "yahoo_finance",
-        "fallbackProviderIds": [],
-        "timeoutSeconds": 10
-      },
-      "MarketNews": {
-        "aggregateResults": true,
-        "primaryProviderId": "yahoo_finance",
-        "fallbackProviderIds": [],
-        "timeoutSeconds": 10
-      }
-    }
-  },
-  "newsDeduplication": {
-    "enabled": true,
-    "similarityThreshold": 0.85,
-    "timestampWindowHours": 24,
-    "compareContent": false,
-    "maxArticlesForComparison": 200,
-    "strategy": "Levenshtein"
-  },
-  "circuitBreaker": {
-    "enabled": true,
-    "failureThreshold": 5,
-    "timeoutSeconds": 60,
-    "halfOpenAfterSeconds": 30
-  }
-}
-```
-
-### Validation sequence
-
-1. Load source (file or built-in defaults).
-2. Expand environment variables.
-3. Validate schema.
-4. Validate semantic references (provider IDs, capabilities, routing links).
-5. Build immutable runtime configuration snapshot.
-
----
-
-## 8) Error Taxonomy and Routing Behavior Matrix
-
-### Canonical error taxonomy
-
-- `InvalidRequest`
-- `AuthenticationError`
-- `AuthorizationError`
-- `RateLimitExceeded`
-- `NetworkError`
-- `Timeout`
-- `ServerError`
-- `DataParsingError`
-- `ConfigurationError`
-- `NotFound`
-- `AllProvidersFailed` (router-level aggregate classification)
-
-### NotFound semantics (final)
-
-- **Failover mode**: `NotFound` from a provider is terminal for that request chain (do not continue to fallback providers for that same request).
-- **Aggregation mode**:
-  - provider-level `NotFound` is recorded as a failed provider result;
-  - if at least one provider succeeds, return partial aggregated success;
-  - if all providers return `NotFound`, return `NotFound` (not generic server error).
-
-### All-provider-failure semantics (final)
-
-- If no provider succeeds, router emits `AllProvidersFailed` context with per-provider categorized causes.
-- Protocol edge maps to:
-  - `NotFound` if all causes are `NotFound`;
-  - `RateLimitExceeded` if all causes are rate-limit related;
-  - otherwise `ServerError` with structured diagnostics payload.
-
-### Routing behavior matrix
-
-| Mode | Provider outcome mix | Result | Error classification |
+| Component | Responsibility | Technology | Component Spec |
 | --- | --- | --- | --- |
-| Failover | Primary success | Return success | N/A |
-| Failover | Primary `NetworkError`, fallback success | Return success | N/A |
-| Failover | Primary `NotFound` | Stop chain, return error | `NotFound` |
-| Failover | All providers fail (mixed) | Return error | `AllProvidersFailed` mapped per rules |
-| Aggregation | Some success + some failure | Return partial aggregated success | Include provider diagnostics |
-| Aggregation | All `NotFound` | Return error | `NotFound` |
-| Aggregation | All rate-limited | Return error | `RateLimitExceeded` |
-| Aggregation | All fail (mixed/non-uniform) | Return error | `AllProvidersFailed` → `ServerError` |
+| IStockDataProvider | Provider abstraction defining 10 data operations | C# interface | Inline — [source](../../StockData.Net/StockData.Net/Providers/IStockDataProvider.cs) |
+| StockDataProviderRouter | Central routing with failover and aggregation | C# class | Inline — [source](../../StockData.Net/StockData.Net/Providers/StockDataProviderRouter.cs) |
+| YahooFinanceProvider | Yahoo Finance API adapter | C# class | Inline — [source](../../StockData.Net/StockData.Net/Providers/YahooFinanceProvider.cs) |
+| CircuitBreaker | Per-provider failure prevention | C# class | Inline — [source](../../StockData.Net/StockData.Net/Resilience/CircuitBreaker.cs) |
+| NewsAggregationService | Multi-provider news collection | C# class | Inline — aggregation logic in [StockDataProviderRouter](../../StockData.Net/StockData.Net/Providers/StockDataProviderRouter.cs) |
+| NewsDeduplicator | Duplicate article detection and merging | C# class | Inline — [source](../../StockData.Net/StockData.Net/Deduplication/NewsDeduplicator.cs) |
+| ConfigurationLoader | JSON configuration with validation | C# class | Inline — [source](../../StockData.Net/StockData.Net/Configuration/ConfigurationLoader.cs) |
+| ErrorClassifier | Maps provider exceptions to canonical taxonomy | C# static class | Inline — [source](../../StockData.Net/StockData.Net/Providers/) |
+| SymbolTranslator | Cross-provider symbol format conversion | C# class | Inline — [source](../../StockData.Net/StockData.Net/Providers/SymbolTranslator.cs) |
+| ProviderHealthMonitor | Rolling health metrics per provider | C# class | Inline — [source](../../StockData.Net/StockData.Net/Providers/ProviderHealthMonitor.cs) |
 
----
+### Component Interaction Patterns
 
-## 9) Resilience Patterns
+**Request Flow (Failover Mode)**:
 
-### Patterns
+1. MCP Handler receives tool call
+2. Router resolves provider chain for data type
+3. Router executes providers sequentially until success
+4. Circuit breaker checks health before each attempt
+5. First successful result returns immediately
 
-- Circuit breaker per provider adapter.
-- Request timeout per data type.
-- Failover chains for non-news operations.
-- Parallel fan-out with partial-result tolerance for news operations.
-- Structured retries only for transient network/timeouts (bounded attempts, jitter).
-- Immutable runtime configuration snapshot to avoid drift.
+**Request Flow (Aggregation Mode)**:
 
----
+1. MCP Handler receives news tool call
+2. Router executes all providers in parallel
+3. Aggregation Service collects all successful results
+4. NewsDeduplicator processes typed article collection
+5. Merged results with source attribution return
 
-## 10) Performance Budget and Guardrails
+## Data Flow
 
-### Budgets
+### Failover Request Flow
 
-- News deduplication CPU processing target: `< 500ms` for 100 articles.
-- End-to-end news request target (normal multi-provider case): `<= 1.5s` p95.
+```mermaid
+sequenceDiagram
+    participant Client
+    participant MCP as MCP Handler
+    participant Router as StockDataProviderRouter
+    participant CB as Circuit Breaker
+    participant P1 as Primary Provider
+    participant P2 as Fallback Provider
 
-### Guardrails
+    Client->>MCP: get_stock_info("AAPL")
+    MCP->>Router: GetStockInfoAsync("AAPL")
+    Router->>CB: CheckState(P1)
+    CB-->>Router: Closed (healthy)
+    Router->>P1: GetStockInfoAsync("AAPL")
+    alt P1 Success
+        P1-->>Router: StockInfo data
+        Router-->>MCP: Success result
+    else P1 Failure
+        P1-->>Router: NetworkError
+        Router->>CB: RecordFailure(P1)
+        Router->>CB: CheckState(P2)
+        CB-->>Router: Closed
+        Router->>P2: GetStockInfoAsync("AAPL")
+        P2-->>Router: StockInfo data
+        Router-->>MCP: Success result
+    end
+    MCP-->>Client: JSON response
+```
 
-- `maxArticlesForComparison` hard cap (`200` default).
-- Per-provider request timeout (`10s` default for news routes).
-- Skip expensive comparisons when timestamp window test fails.
-- Optional content comparison remains off by default.
+### News Aggregation and Deduplication Flow
 
----
+```mermaid
+sequenceDiagram
+    participant Client
+    participant MCP as MCP Handler
+    participant Router as StockDataProviderRouter
+    participant Agg as NewsAggregationService
+    participant P1 as Provider 1
+    participant P2 as Provider 2
+    participant Dedup as NewsDeduplicator
 
-## 11) Security and Operational Observability
+    Client->>MCP: get_news("AAPL")
+    MCP->>Router: GetNewsAsync("AAPL")
+    Router->>Agg: AggregateAsync(providers, "AAPL")
+    par Parallel Execution
+        Agg->>P1: GetNewsAsync("AAPL")
+        P1-->>Agg: 10 articles
+    and
+        Agg->>P2: GetNewsAsync("AAPL")
+        P2-->>Agg: 8 articles
+    end
+    Agg->>Dedup: Deduplicate(18 articles)
+    Dedup->>Dedup: Compute similarity matrix
+    Dedup->>Dedup: Cluster duplicates (threshold 0.85)
+    Dedup->>Dedup: Merge clusters with source attribution
+    Dedup-->>Agg: 12 deduplicated articles
+    Agg-->>Router: Aggregated result
+    Router-->>MCP: Typed NewsArticle[]
+    MCP-->>Client: JSON response
+```
+
+## Data Model
+
+### Core Domain Entities
+
+| Entity | Description | Key Fields | Storage |
+| --- | --- | --- | --- |
+| NewsArticle | Aggregated news with source attribution | Title, Url, Publisher, PublishedAt, Summary, Sources[], IsMerged | In-memory (transient) |
+| ArticleSource | Provider attribution for merged articles | ProviderId, OriginalUrl, Publisher | In-memory (transient) |
+| StockInfo | Stock quote and metrics | Symbol, Price, Volume, MarketCap | In-memory (transient) |
+| ProviderConfig | Provider metadata and capabilities | Id, Type, Priority, Capabilities[], Enabled | In-memory (loaded at startup) |
+| CircuitBreakerState | Per-provider health state | State (Closed/Open/Half-Open), FailureCount, LastFailureTime | In-memory (runtime) |
+| HealthMetrics | Rolling health statistics | SuccessRate, AvgLatency, ConsecutiveFailures | In-memory (5-min window) |
+
+### Canonical Error Taxonomy
+
+| Error Type | Trigger Condition | Routing Behavior |
+| --- | --- | --- |
+| InvalidRequest | Validation failure, empty ticker | Terminal (no failover) |
+| AuthenticationError | Missing/invalid API key | Terminal (config issue) |
+| RateLimitExceeded | Provider throttles request | Continue failover |
+| NetworkError | Connection failure, DNS error | Continue failover |
+| Timeout | Request exceeds timeout threshold | Continue failover |
+| NotFound | Ticker not found by provider | Terminal in failover; recorded in aggregation |
+| ServerError | Provider internal error (5xx) | Continue failover |
+| DataParsingError | Malformed provider response | Continue failover |
+| ConfigurationError | Invalid configuration at startup | Fatal (fail startup) |
+| AllProvidersFailed | All providers in chain failed | Maps to specific error based on causes |
+
+## API / Interface Definitions
+
+### IStockDataProvider Interface
+
+**Direction**: Router → Provider Adapters  
+**Protocol**: In-process C# interface  
+**Key operations**:
+
+- `GetStockInfoAsync(ticker, cancellationToken)` — Retrieve current quote and metrics
+- `GetHistoricalPricesAsync(ticker, interval, startDate, endDate, cancellationToken)` — Retrieve OHLCV data
+- `GetNewsAsync(ticker, count, cancellationToken)` — Retrieve company-specific news
+- `GetMarketNewsAsync(category, count, cancellationToken)` — Retrieve market-wide news
+- `GetOptionsAsync(ticker, date, cancellationToken)` — Retrieve options chain
+- `GetFinancialsAsync(ticker, type, cancellationToken)` — Retrieve financial statements
+- `GetHoldersAsync(ticker, type, cancellationToken)` — Retrieve institutional/insider holders
+- `GetDividendsAsync(ticker, startDate, endDate, cancellationToken)` — Retrieve dividend history
+- `GetStockActionsAsync(ticker, startDate, endDate, cancellationToken)` — Retrieve splits and dividends
+- `GetHealthAsync(cancellationToken)` — Provider health check
+
+**Error handling**: All methods throw typed ProviderException with canonical error categories. Router catches and classifies exceptions using ErrorClassifier.
+
+### MCP Tool Surface
+
+**Direction**: Client → MCP Server  
+**Protocol**: JSON-RPC over stdio  
+**Key tools**:
+
+- `get_stock_info` — Maps to IStockDataProvider.GetStockInfoAsync
+- `get_historical_prices` — Maps to IStockDataProvider.GetHistoricalPricesAsync
+- `get_news` — Maps to aggregation + deduplication pipeline
+- `get_market_news` — Maps to aggregation + deduplication pipeline
+- `get_options` — Maps to IStockDataProvider.GetOptionsAsync
+- `get_financials` — Maps to IStockDataProvider.GetFinancialsAsync
+- `get_holders` — Maps to IStockDataProvider.GetHoldersAsync
+- `get_dividends` — Maps to IStockDataProvider.GetDividendsAsync
+- `get_stock_actions` — Maps to IStockDataProvider.GetStockActionsAsync
+- `get_health` — Returns provider health metrics
+
+## Technology Decisions
+
+| Decision | Choice | Rationale | Alternatives Considered |
+| --- | --- | --- | --- |
+| Provider abstraction | C# interface (IStockDataProvider) | Compile-time type safety, testability with mocks, async/await support | Plugin architecture (runtime loading) — rejected for complexity |
+| Configuration format | JSON with JSON Schema validation | Industry standard, environment variable support, schema validation | YAML (less strict), TOML (less common) |
+| Deduplication algorithm | Levenshtein distance on titles | Simple, effective for text similarity, deterministic | MinHash/LSH (more complex), ML-based (overkill) |
+| Circuit breaker state | Per-provider in-memory | Isolates failures, no shared state, fast state checks | Shared state (adds complexity), persistent state (not needed) |
+| Configuration loading | Fail-fast at startup | Prevents runtime surprises, forces correct configuration | Runtime fallback (hides config errors) |
+| News aggregation | Parallel async execution | Minimizes latency, provider failures isolated | Sequential (slower), reactive streams (overkill) |
+| Symbol translation | Compile-time dictionary | O(1) lookups, no external dependencies, type-safe | Configuration file (slower), database (overkill) |
+| Error taxonomy | 10 canonical categories + router-level aggregate | Provider-agnostic, supports intelligent routing decisions | HTTP status codes (too coarse), provider-specific (leaky) |
+
+## Cross-Cutting Concerns
 
 ### Security
 
-- Secrets must be environment-injected; never committed in config.
-- Provider adapters sanitize external payloads before domain mapping.
-- Error responses redact credentials/tokens.
+- **Secrets Management**: API keys loaded from environment variables; never committed to configuration files
+- **TLS Enforcement**: All external API calls use TLS 1.2+ with strict certificate validation
+- **Input Validation**: Ticker symbols validated (1-5 alphanumeric characters) before provider calls
+- **Error Redaction**: Credentials and tokens redacted from all error messages and logs
+- **Provider Sanitization**: External payloads sanitized before domain model mapping
+
+**Coordination**: See [Security Summary](../security/security-summary.md) for comprehensive threat model and security requirements.
+
+### Performance
+
+- **Targets**: News deduplication < 500ms for 100 articles; failover < 5 seconds; circuit breaker overhead < 1ms
+- **Optimization**: Levenshtein algorithm with early termination; parallel provider execution; lazy configuration loading
+- **Guardrails**: `maxArticlesForComparison=200` hard cap; per-provider timeouts; optional content comparison disabled by default
+
+### Scalability
+
+- **Horizontal**: Stateless design allows multiple MCP server instances
+- **Vertical**: In-memory state only; no persistent storage
+
+- **Bottlenecks**: Deduplication O(n²) complexity for high article counts; single-process stdio limits
+- **Limits**: News deduplication capped at 200 articles; no persistent state across requests
 
 ### Observability
 
-- Structured logs include: `requestId`, `dataType`, `providerId`, `mode`, `latencyMs`, `errorCategory`.
-- Dedup metrics: `originalCount`, `deduplicatedCount`, `duplicatesRemoved`, `processingTimeMs`, `strategy`.
-- MCP health visibility via dedicated health tool output (protocol-native; no extra HTTP endpoint).
+- **Logging**: Structured JSON logs with `requestId`, `dataType`, `providerId`, `mode`, `latencyMs`, `errorCategory`
+- **Metrics**: Deduplication metrics (`originalCount`, `deduplicatedCount`, `processingTimeMs`); circuit breaker state transitions; provider health statistics
+- **Health Visibility**: MCP `get_health` tool provides provider status, success rates, average latency, circuit breaker states
+- **Diagnostics**: All routing decisions logged; error aggregation includes per-provider details
 
----
+## Deployment Architecture
 
-## 12) Compatibility, Migration, and Rollout
+### Deployment Model
 
-### Compatibility
+- **Target Environment**: Local single-user Windows process (stdio-based MCP server)
+- **Infrastructure**: Self-contained executable (.NET 8.0 self-contained publish)
+- **Configuration Source**: JSON file at `C:\Tools\StockData.Net\appsettings.json` or environment variables
+- **Scaling**: Stateless; multiple instances supported (each serves one user session)
 
-- MCP tool names and primary user-facing behavior remain compatible.
-- Non-news routes preserve failover-first semantics.
+### Configuration Management
 
-### Migration rules
+**Startup Validation Policy** (Deterministic):
 
-- Existing `timestampWindowMinutes` is **deprecated and invalid** in canonical schema.
-- Canonical field is `timestampWindowHours` only.
-- Existing deployments with explicit config must pass strict validation at startup.
+- If configuration file is **absent**: Load built-in defaults and start
+- If configuration file is **present but invalid**: Fail startup immediately (no fallback to defaults)
+- Validation sequence: Load source → Expand env vars → Validate schema → Validate semantic refs → Build immutable config snapshot
 
-### Rollout
+**Configuration Schema** (Concise — see [appsettings.json](../../StockData.Net/StockData.Net.McpServer/appsettings.json) for full reference):
 
-1. Deploy with canonical defaults.
-2. Enable additional providers progressively.
-3. Monitor aggregation partial-failure rates and dedup metrics.
-4. Tune thresholds/time windows only via config change control.
+```json
+{
+  "version": "1.0",
+  "providers": [{ "id": "yahoo_finance", "type": "YahooFinanceProvider", "enabled": true }],
+  "routing": { "defaultStrategy": "PrimaryWithFailover" },
+  "newsDeduplication": { "enabled": true, "similarityThreshold": 0.85 },
+  "circuitBreaker": { "enabled": true, "failureThreshold": 5, "timeoutSeconds": 60 }
+}
+```
 
----
+**Migration Rules**:
 
-## 13) Testing Strategy and Acceptance Criteria
+- `timestampWindowMinutes` is **deprecated and invalid** (canonical field is `timestampWindowHours` only)
+- Existing deployments with explicit config must pass strict validation at startup
 
-### Testing strategy
+### Environments
 
-- Unit tests for routing mode resolution, error classification, and dedup clustering.
-- Contract tests for provider adapters mapping external schemas/errors to canonical models/errors.
-- Integration tests for:
-  - failover success and failover termination on `NotFound`;
-  - aggregation partial success;
-  - all-provider-failure mapping cases.
-- Performance tests for deduplication budget compliance.
+| Environment | Purpose | Configuration | Notes |
+| --- | --- | --- | --- |
+| Development | Local developer testing | Minimal config, Yahoo only | Uses built-in defaults |
+| Production (End User) | User's local machine | User-provided appsettings.json | C:\Tools\StockData.Net\ |
 
-### Acceptance criteria
+## Constraints and Assumptions
 
-1. Startup policy behaves deterministically as defined in section 7.
-2. Configuration accepts `timestampWindowHours` and rejects `timestampWindowMinutes`.
-3. Default news routes execute aggregation + deduplication.
-4. Core dedup pipeline uses typed domain objects; protocol edge owns serialization.
-5. Error matrix behavior (including `NotFound` and all-provider failure) matches section 8.
-6. No unresolved architecture-level open questions remain.
+### Constraints
 
----
+- **Platform**: Windows 10+ only (current release; Linux/macOS require separate builds)
+- **Process Model**: Single stdio-based process per user session (no shared state)
+- **Provider Integration**: Compile-time provider implementations (no runtime plugin loading)
+- **State Management**: In-memory only; no persistent storage across requests
+- **Configuration Changes**: Require process restart to take effect
+- **API Rate Limits**: Subject to provider free-tier limits (Yahoo: ~2000/hour, Alpha Vantage: 5/min)
 
-## 14) Appendix: canonical JSON examples + sequence diagrams
+### Assumptions
 
-### A. Canonical JSON example (default; partial override snippet)
+- **Network Availability**: Internet connection required for all provider calls
+- **Provider Stability**: Yahoo Finance remains free and accessible without API key
+- **Configuration Correctness**: Users provide valid API keys for optional providers
+- **Single User**: MCP server serves one user at a time (no multi-tenancy)
+- **News Freshness**: 24-hour deduplication window sufficient for news queries
+- **Article Count**: News queries typically return < 100 articles per provider
 
-This is a **partial override snippet** (not a full standalone config). It is merged with canonical defaults from section 7, where `yahoo_finance` is declared in `providers`.
+## Risks
+
+| Risk | Impact | Likelihood | Mitigation |
+| --- | --- | --- | --- |
+| Yahoo Finance API changes/deprecation | HIGH (primary provider loss) | MEDIUM | Multi-provider architecture allows fallback; document alternative providers |
+| Provider rate limiting impacts user experience | MEDIUM (degraded availability) | MEDIUM | Circuit breaker prevents cascade; clear error messages; rate limit monitoring |
+| Deduplication false positives merge unrelated articles | LOW (incorrect data) | LOW | Configurable threshold (default 0.85); ticker symbol consistency checks; user feedback mechanism |
+| News aggregation latency exceeds user expectations | MEDIUM (poor UX) | LOW | Parallel execution; 10s timeout per provider; performance monitoring |
+| Configuration errors prevent startup | HIGH (server won't start) | LOW | Fail-fast validation; clear error messages; example configurations provided |
+| Circuit breaker stuck open prevents provider recovery | MEDIUM (availability loss) | LOW | 60s half-open retry; health check monitoring; manual reset capability |
+
+## Related Documents
+
+- Feature Specification: [Multi-Source Stock Data Aggregation](../features/features-summary.md)
+- Security Design: [Security Summary](../security/security-summary.md)
+- Test Strategy: [Testing Summary](../testing/testing-summary.md)
+- DevOps Guide: [Deployment Guide](../deployment/DEPLOYMENT_GUIDE.md)
+- Root README: [Project Overview](../../README.md)
+- Architecture Decision Records: [ADR-001 Consolidate Architecture Documentation](decisions/adr-001-consolidate-architecture-documentation.md)
+
+## Appendix: Configuration Examples and Flow Diagrams
+
+### Example 1: Partial Configuration Override (News Aggregation + Deduplication)
+
+This partial override merges with built-in defaults where `yahoo_finance` provider is declared:
 
 ```json
 {
   "version": "1.0",
   "routing": {
-    "defaultStrategy": "PrimaryWithFailover",
     "dataTypeRouting": {
-      "News": { "aggregateResults": true, "primaryProviderId": "yahoo_finance", "fallbackProviderIds": [], "timeoutSeconds": 10 },
-      "MarketNews": { "aggregateResults": true, "primaryProviderId": "yahoo_finance", "fallbackProviderIds": [], "timeoutSeconds": 10 }
+      "News": { "aggregateResults": true, "primaryProviderId": "yahoo_finance", "timeoutSeconds": 10 }
     }
   },
-  "newsDeduplication": {
-    "enabled": true,
-    "similarityThreshold": 0.85,
-    "timestampWindowHours": 24,
-    "compareContent": false,
-    "maxArticlesForComparison": 200,
-    "strategy": "Levenshtein"
-  }
+  "newsDeduplication": { "enabled": true, "similarityThreshold": 0.85, "timestampWindowHours": 24 }
 }
 ```
 
-### B. Canonical JSON example (failover-only override for news)
+### Example 2: Failover-Only Configuration (Deduplication Disabled)
 
 ```json
 {
-  "routing": {
-    "dataTypeRouting": {
-      "News": { "aggregateResults": false },
-      "MarketNews": { "aggregateResults": false }
-    }
-  },
-  "newsDeduplication": {
-    "enabled": false
-  }
+  "routing": { "dataTypeRouting": { "News": { "aggregateResults": false } } },
+  "newsDeduplication": { "enabled": false }
 }
 ```
 
-### C. Sequence diagram: default news aggregation + dedup
+### Sequence Diagram: Default News Aggregation + Deduplication
 
 ```mermaid
 sequenceDiagram
@@ -432,7 +422,7 @@ sequenceDiagram
     H-->>C: JSON response
 ```
 
-### D. Sequence diagram: all providers fail in aggregation mode
+### Sequence Diagram: All Providers Fail in Aggregation Mode
 
 ```mermaid
 sequenceDiagram
@@ -458,15 +448,6 @@ sequenceDiagram
 
 ---
 
-## Related Documentation
-
-- [Root README](../../README.md) - Project overview and quick start
-- [Features Summary](../features/features-summary.md) - Feature overview and implementation status
-- [Security Summary](../security/security-summary.md) - Security analysis and threat model
-- [Testing Summary](../testing/testing-summary.md) - Test strategy and coverage metrics
-
----
-
-**Document Status**: FINAL (Effective: 2026-02-28)  
+**Document Status**: Approved (Effective February 28, 2026)  
 **Approval**: Architecture baseline approved by architect review  
-**Next Review**: Upon completion of Phase 3 implementation
+**Next Review**: Upon implementation of additional provider integrations

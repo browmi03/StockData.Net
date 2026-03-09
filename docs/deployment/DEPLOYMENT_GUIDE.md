@@ -1,9 +1,15 @@
 
-# Deployment Guide
+# Deployment Guide — StockData.Net MCP Server (Windows)
 
-## Deploy StockData.Net MCP Server (Windows Only)
+## Document Info
 
-**Version:** 1.0.0 (2026-02-28)
+- **Type**: Operational Runbook — Deployment
+- **Version**: 1.0.0
+- **Architecture**: [Canonical Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
+- **Security**: [Security Summary](../security/security-summary.md)
+- **Related Runbooks**: [Release Checklist](./RELEASE_CHECKLIST.md) · [GitHub Secrets Validation](./GITHUB_SECRETS_VALIDATION.md)
+- **Status**: Approved
+- **Last Updated**: 2026-03-09
 
 ---
 
@@ -54,7 +60,7 @@ This guide provides step-by-step instructions for deploying the binary and confi
    ```
    You should see `StockData.Net.McpServer.exe` in the directory.
 
-#### Step 2: Test the Binary
+### Step 2: Test the Binary
 
 Open PowerShell and test that the binary runs:
 
@@ -71,7 +77,7 @@ Listening for MCP requests on stdio...
 
 ```
 
-#### Step 2.5: Configure API Keys (Local Option A)
+### Step 2.5: Configure API Keys (Local Option A)
 
 For local deployments in `C:\Tools\StockData.Net\`, store provider API keys directly in:
 
@@ -133,7 +139,7 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 - The `args` array should be empty `[]`
 - Save the settings file (`Ctrl+S`)
 
-#### Step 4: Restart VS Code
+### Step 4: Restart VS Code
 
 1. **Close VS Code completely**
 2. **Reopen VS Code**
@@ -268,9 +274,11 @@ After completing deployment, verify:
 
 ---
 
-## Related Documentation
+## Related Documents
 
-- [Release Checklist](./RELEASE_CHECKLIST.md) - Release validation procedures
+- [Release Checklist](./RELEASE_CHECKLIST.md) — Release validation procedures
+- [GitHub Secrets Validation](./GITHUB_SECRETS_VALIDATION.md) — CI/CD secret management
+- [Features Summary](../features/features-summary.md) — Feature specifications
 - [README: Quick Start](../../README.md#quick-start)
 - [README: Add MCP Server to VS Code](../../README.md#add-mcp-server-to-vs-code)
 - [GitHub Releases](https://github.com/browmi03/StockData.Net/releases)
