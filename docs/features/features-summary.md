@@ -127,7 +127,6 @@ The following items are explicitly NOT included in this feature:
 - **Yahoo Finance API**: Primary data source (free, no API key required)
 - **Alpha Vantage API** (optional): Requires API key, 5 calls/minute free tier
 - **Finnhub API** (optional): Requires API key, 60 calls/minute free tier
-- **Polygon.io API** (optional): Requires API key, 5 calls/minute free tier
 
 ### Blocks
 
