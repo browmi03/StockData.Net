@@ -144,11 +144,10 @@ Once configured, ask your AI assistant:
 
 ## Configuring Market Data Providers
 
-StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports four market data providers with different strengths and capabilities:
+StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports three market data providers with different strengths and capabilities:
 
 - **Yahoo Finance** - Free, no API key required, used as default fallback
 - **Finnhub** - Real-time stock data with generous free tier
-- **Polygon.io** - Historical OHLCV data and aggregates
 - **Alpha Vantage** - Historical time series and forex data
 
 Each provider can be independently enabled/disabled and configured with its own API key and rate limits. The server automatically routes requests to the best available provider based on data type and implements automatic failover if a provider fails.
@@ -213,54 +212,6 @@ Ensure the provider is enabled in `appsettings.json`:
 ```
 
 **Rate Limit Configuration:** The default 60 requests/minute matches the free tier. Adjust `requestsPerMinute` if you have a paid plan.
-
----
-
-#### Polygon.io
-
-**Description:** Comprehensive historical market data including OHLCV (Open, High, Low, Close, Volume) bars, aggregates, and tick-level data. Excellent for historical analysis and backtesting.
-
-**Free Tier:** 5 API calls per minute
-
-**Registration:**
-
-1. Visit [https://polygon.io/](https://polygon.io/)
-2. Click "Get Your Free API Key" and sign up
-3. Verify your email address
-4. Copy your API key from the dashboard
-
-**Configuration:**
-
-**Configuration (Local appsettings.json):**
-
-Edit `C:\Tools\StockData.Net\appsettings.json` and set:
-
-```json
-{
-  "providers": {
-    "polygon": {
-      "apiKey": "your_actual_polygon_api_key_here"
-    }
-  }
-}
-```
-
-Ensure the provider is enabled in `appsettings.json`:
-
-
-```json
-{
-  "id": "polygon",
-  "enabled": true,
-  "priority": 3,
-  "capabilities": ["HistoricalData", "StockPrice"],
-  "rateLimit": {
-    "requestsPerMinute": 5
-  }
-}
-```
-
-**Rate Limit Configuration:** The default 5 requests/minute matches the free tier. Consider upgrading to a paid plan for higher limits if needed.
 
 ---
 
@@ -353,7 +304,6 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 | --- | --- | --- | --- |
 | Yahoo Finance | Not rate-limited | N/A | Provider-side limits may apply |
 | Finnhub | 60 requests/min | 60 requests/min | Configurable via `rateLimit.requestsPerMinute` |
-| Polygon.io | 5 requests/min | 5 requests/min | Matches free tier default |
 | Alpha Vantage | 5 requests/min | 5 req/min (500/day) | Has daily limit in addition to per-minute limit |
 
 ---
@@ -392,9 +342,6 @@ Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
   "providers": {
     "finnhub": {
       "apiKey": "your_finnhub_key"
-    },
-    "polygon": {
-      "apiKey": "your_polygon_key"
     },
     "alphavantage": {
       "apiKey": "your_alphavantage_key"

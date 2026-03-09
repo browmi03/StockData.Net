@@ -47,7 +47,6 @@ public class McpConfiguration
 public class ProviderCredentialsConfiguration
 {
     public ProviderCredentialSection Finnhub { get; set; } = new();
-    public ProviderCredentialSection Polygon { get; set; } = new();
     public ProviderCredentialSection AlphaVantage { get; set; } = new();
 }
 

@@ -33,7 +33,7 @@ The StockData.Net project maintains **357 test methods** across three test proje
 
 ### In Scope
 
-- Provider abstraction (`IStockDataProvider`) contract validation across Yahoo Finance, Alpha Vantage, Polygon, Finnhub
+- Provider abstraction (`IStockDataProvider`) contract validation across Yahoo Finance, Alpha Vantage, and Finnhub
 - Configuration validation (JSON parsing, environment variable expansion, circular dependency detection)
 - Circuit breaker state machine (Closed → Open → Half-Open → Closed) and failover chains
 - News deduplication (Levenshtein similarity, threshold-based merging, source attribution)
@@ -48,7 +48,7 @@ The StockData.Net project maintains **357 test methods** across three test proje
 - UI / front-end testing (no UI exists; MCP protocol only)
 - Load testing against live external APIs (rate limits prevent meaningful results)
 - Accessibility testing (WCAG not applicable; system is a backend MCP server)
-- Non-Yahoo provider live API integration (Alpha Vantage, Polygon, Finnhub tested with mocked HTTP only)
+- Non-Yahoo provider live API integration (Alpha Vantage and Finnhub tested with mocked HTTP only)
 
 ---
 
@@ -145,7 +145,7 @@ The StockData.Net project maintains **357 test methods** across three test proje
 
 Test cases are organized by component. Each test case maps to one or more GWT scenarios from the traceability matrix above. Full implementations reside in the test source files listed.
 
-### Provider Abstraction (YahooFinanceProviderTests, AlphaVantageProviderTests, PolygonProviderTests)
+### Provider Abstraction (YahooFinanceProviderTests, AlphaVantageProviderTests)
 
 - **Priority**: Critical
 - **Scenarios**: 1.1, 5.2
@@ -323,12 +323,10 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 | YahooFinanceClientTests.cs | 39 | HTTP client, cookie/crumb auth |
 | YahooFinanceProviderTests.cs | 36 | Provider contract (10 methods) |
 | AlphaVantageProviderTests.cs | 25 | Provider contract |
-| PolygonProviderTests.cs | 24 | Provider contract |
 | AlphaVantageClientTests.cs | 21 | HTTP client |
 | StockDataIntegrationTests.cs | 19 | Router integration |
 | StockDataProviderRouterTests.cs | 18 | Routing, failover |
 | ConfigurationLoaderTests.cs | 18 | Config validation |
-| PolygonClientTests.cs | 17 | HTTP client |
 | ProviderHealthMonitorTests.cs | 17 | Health monitoring |
 | SymbolTranslatorTests.cs | 12 | Core translation logic |
 | CircuitBreakerTests.cs | 10 | State machine |
@@ -340,7 +338,7 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 | NewsDeduplicatorTests.cs | 6 | Deduplication algorithm |
 | NewsAggregationRouterTests.cs | 5 | Multi-provider aggregation |
 | NewsAggregationMcpServerTests.cs | 1 | MCP + aggregation E2E |
-| Integration tests (3 provider files) | 9 | Alpha Vantage, Finnhub, Polygon live API |
+| Integration tests (2 provider files) | 6 | Alpha Vantage, Finnhub live API |
 | **Total** | **357** | |
 
 ### Phase Completion Status

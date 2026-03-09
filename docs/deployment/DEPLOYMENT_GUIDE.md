@@ -92,10 +92,6 @@ Example:
       "enabled": true,
       "apiKey": "your_finnhub_key"
     },
-    "polygon": {
-      "enabled": true,
-      "apiKey": "your_polygon_key"
-    },
     "alphavantage": {
       "enabled": true,
       "apiKey": "your_alphavantage_key"
