@@ -1,5 +1,18 @@
 # GitHub Secrets Validation
 
+## Document Info
+
+- **Type**: Operational Runbook — CI/CD Secrets
+- **Architecture**: [Canonical Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
+- **Security**: [Security Summary](../security/security-summary.md)
+- **Related Runbooks**: [Deployment Guide](./DEPLOYMENT_GUIDE.md) · [Release Checklist](./RELEASE_CHECKLIST.md)
+- **Status**: Approved
+- **Last Updated**: 2026-03-09
+
+---
+
+## Overview
+
 This document defines the CI/CD secret validation flow for multi-provider deployment.
 
 ## Required Repository Secrets
@@ -91,3 +104,12 @@ CI runs gitleaks on push and pull request in `test.yml` and fails the workflow i
 - Configure provider API keys in local deployment `appsettings.json` only.
 - Keep `appsettings.json` placeholders unchanged in source control.
 - Never print, log, or commit key values.
+
+---
+
+## Related Documents
+
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md) — Platform-specific deployment instructions
+- [Release Checklist](./RELEASE_CHECKLIST.md) — Release validation procedures
+- [Security Summary](../security/security-summary.md) — Security guidelines
+- [Features Summary](../features/features-summary.md) — Feature specifications

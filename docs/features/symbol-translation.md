@@ -1,12 +1,16 @@
-# Smart Symbol Translation
+# Feature: Smart Symbol Translation
 
-**Status**: Implemented
-**Version**: 1.0
-**Last Updated**: 2026-03-06
+## Document Info
+
+- **Feature Spec**: This document
+- **Architecture**: [Stock Data Aggregation Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
+- **Test Strategy**: [Testing Summary](../testing/testing-summary.md)
+- **Status**: Implemented
+- **Last Updated**: 2026-03-06
 
 ## Overview
 
-The Smart Symbol Translation feature provides provider-aware symbol format conversion that automatically translates market symbols (particularly indices) between different provider formats. Users can query using any recognized format (canonical names, Yahoo ^-prefixed, FinViz @-prefixed) and the system automatically translates to the target provider's native format before API calls.
+Smart Symbol Translation provides provider-aware symbol format conversion that automatically translates market symbols (particularly indices) between different provider formats. Users can query using any recognized format (canonical names, Yahoo ^-prefixed, FinViz @-prefixed) and the system automatically translates to the target provider's native format before API calls.
 
 ## Problem Statement
 
@@ -14,29 +18,59 @@ Financial data providers use different symbol formats for the same security (e.g
 
 ## User Stories
 
-### User Story 1: Query market indices using canonical names (VIX, GSPC) without provider-specific format knowledge
+### User Story 1: As a user, I want to query market indices using canonical names (VIX, GSPC) without provider-specific format knowledge so that I don't need to learn each provider's symbol format
 
-**Scenarios**: Canonical names (VIX, GSPC, DJI) translate to Yahoo format (^VIX, ^GSPC, ^DJI); regular stocks (AAPL) pass through unchanged.
+> 1.1 Given I query with canonical "VIX", when the system routes to Yahoo Finance, then the symbol translates to "^VIX" before the API call
+>
+> 1.2 Given I query with canonical "GSPC", when the system routes to Yahoo Finance, then the symbol translates to "^GSPC" before the API call
+>
+> 1.3 Given I query with canonical "DJI", when the system routes to Yahoo Finance, then the symbol translates to "^DJI" before the API call
+>
+> 1.4 Given I query with regular stock symbol "AAPL", when the system translates, then the symbol passes through unchanged (no translation needed)
 
-### User Story 2: Use provider-specific formats (^VIX) for backward compatibility
+### User Story 2: As a user, I want to use provider-specific formats (^VIX) for backward compatibility so that my existing queries continue to work
 
-**Scenarios**: Yahoo format symbols (^VIX, ^GSPC) pass through unchanged; both canonical and Yahoo formats retrieve identical data.
+> 2.1 Given I query with Yahoo format "^VIX", when the system routes to Yahoo Finance, then the symbol passes through unchanged
+>
+> 2.2 Given I query with Yahoo format "^GSPC", when the system routes to Yahoo Finance, then the symbol passes through unchanged
+>
+> 2.3 Given I query with both canonical "VIX" and Yahoo format "^VIX", when the system processes both, then both retrieve identical data from Yahoo Finance
 
-### User Story 3: Automatic provider-aware translation without routing logic changes
+### User Story 3: As a system, I want automatic provider-aware translation without routing logic changes so that translation is transparent to the routing layer
 
-**Scenarios**: Translation occurs after provider selection; cross-provider formats convert correctly (@VX → ^VIX when Yahoo selected); unmapped symbols pass through unchanged.
+> 3.1 Given a provider is selected by the router, when translation occurs, then it happens after provider selection but before API call
+>
+> 3.2 Given I query with FinViz format "@VX", when Yahoo Finance is selected, then the symbol translates to "^VIX" for the Yahoo API call
+>
+> 3.3 Given a symbol is not in the mapping dictionary, when translation runs, then the symbol passes through unchanged to the provider
 
-### User Story 4: Clear error messages for invalid symbols
+### User Story 4: As a user, I want clear error messages for invalid symbols so that I can correct my queries
 
-**Scenarios**: Invalid format (!!!INVALID) returns clear validation error; non-existent symbols return appropriate not-found messages.
+> 4.1 Given I query with empty string "", when validation runs, then the system returns a clear validation error
+>
+> 4.2 Given I query with invalid format "!!!INVALID", when validation runs after translation, then the system returns a clear validation error
+>
+> 4.3 Given I query with a non-existent symbol "XYZNOTREAL", when the provider processes it, then the provider returns an appropriate not-found message
 
-### User Story 5: Comprehensive index coverage for commonly used benchmarks
+### User Story 5: As a system administrator, I want comprehensive index coverage for commonly used benchmarks so that users can query major market indices
 
-**Scenarios**: Mappings include major US indices, international indices, and sector-specific indices covering 28 category entries (27 unique indices) across US market, international, sector/commodity, volatility, and bond categories.
+> 5.1 Given the mapping includes US market indices (VIX, GSPC, DJI, IXIC, RUT, NDX, NYA, OEX, MID), when I query any of these, then each translates to the correct Yahoo format
+>
+> 5.2 Given the mapping includes international indices (FTSE, GDAXI, N225, HSI, SSEC, AXJO, KS11, BSESN), when I query any of these, then each translates correctly
+>
+> 5.3 Given the mapping includes sector/commodity indices (SOX, XOI, HUI, XAU), when I query any of these, then each translates correctly
+>
+> 5.4 Given the mapping includes volatility indices (VIX, VXN, RVX), when I query any of these, then each translates correctly
+>
+> 5.5 Given the mapping includes bond indices (TNX, TYX, FVX, IRX), when I query any of these, then each translates correctly
 
-### User Story 6: Extensible mapping system for new providers and symbols
+### User Story 6: As a developer, I want an extensible mapping system for new providers and symbols so that adding coverage requires minimal code changes
 
-**Scenarios**: Adding new providers or symbols requires only updating the C# mapping dictionary; no configuration files or database changes.
+> 6.1 Given I add a new symbol to the mapping dictionary, when I rebuild the application, then the new symbol is immediately available for translation
+>
+> 6.2 Given I add a new provider format to an existing symbol, when the system starts, then the reverse index automatically includes the new format
+>
+> 6.3 Given I add a new provider, when I add that provider ID to existing mappings, then all existing symbols support the new provider without additional code changes
 
 ## Requirements
 
@@ -81,25 +115,22 @@ Financial data providers use different symbol formats for the same security (e.g
 
 ### Critical (Blocking)
 
-- [x] **AC1**: Canonical names translate to Yahoo format; Yahoo format passes through unchanged
-- [x] **AC2**: All 28 required indices present in mapping dictionary
-- [x] **AC3**: Cross-provider translation works (e.g., @VX to ^VIX for Yahoo)
-- [x] **AC4**: Unmapped symbols pass through unchanged
-- [x] **AC5**: Translation occurs after provider selection in router
-- [x] **AC6**: Backward compatibility - existing Yahoo format queries continue to work
-- [x] **AC7**: Validation errors (ArgumentException) classified as InvalidRequest and do not trigger failover
+- [x] **[Blocking]** AC1: Canonical names translate to Yahoo format; Yahoo format passes through unchanged — Evidence: Translation tests passing for all canonical symbols
+- [x] **[Blocking]** AC2: All 28 required indices present in mapping dictionary — Evidence: Mapping dictionary contains all 28 category entries (27 unique indices)
+- [x] **[Blocking]** AC3: Cross-provider translation works (e.g., @VX to ^VIX for Yahoo) — Evidence: Cross-provider translation tests passing
+- [x] **[Blocking]** AC4: Unmapped symbols pass through unchanged — Evidence: Pass-through tests verify unmapped symbols unchanged
+- [x] **[Blocking]** AC5: Translation occurs after provider selection in router — Evidence: Router integration tests verify translation timing
+- [x] **[Blocking]** AC6: Backward compatibility - existing Yahoo format queries continue to work — Evidence: All existing 208+ tests remain green
+- [x] **[Blocking]** AC7: Validation errors (ArgumentException) classified as InvalidRequest and do not trigger failover — Evidence: Error classification tests passing
 
 ### Important (Non-Blocking)
 
-- [x] **AC8**: All index categories covered (international, sector/commodity, bond, volatility)
-- [x] **AC9**: Translation performance overhead < 1ms per query
-- [x] **AC10**: Comprehensive test coverage with 90%+ line coverage
-
-### Design Requirements
-
-- [x] **AC11**: C# dictionary implementation (no config files); supports multiple providers per symbol
-- [x] **AC12**: Extensible design - new providers require only mapping updates
-- [x] **AC13**: Security requirements satisfied: input validation, no injection vulnerabilities, proper error handling
+- [x] **[Non-blocking]** AC8: All index categories covered (international, sector/commodity, bond, volatility) — Evidence: 5 categories with complete symbol coverage
+- [x] **[Non-blocking]** AC9: Translation performance overhead < 1ms per query — Evidence: Performance tests show < 1ms overhead
+- [x] **[Non-blocking]** AC10: Comprehensive test coverage with 90%+ line coverage — Evidence: 95%+ line coverage for SymbolTranslator
+- [x] **[Non-blocking]** AC11: C# dictionary implementation (no config files); supports multiple providers per symbol — Evidence: Two-level dictionary structure implemented
+- [x] **[Non-blocking]** AC12: Extensible design - new providers require only mapping updates — Evidence: Adding provider is single dictionary entry change
+- [x] **[Non-blocking]** AC13: Security requirements satisfied: input validation, no injection vulnerabilities, proper error handling — Evidence: Security tests passing
 
 ## Out of Scope
 
@@ -408,31 +439,56 @@ StockData.Net.Tests/
 - Existing 208+ tests remain green
 - ValidateTicker logic unchanged
 
-## Implementation Status
+## Success Metrics
 
-All phases complete and implemented:
+**Functional Success:**
 
-- [x] **Phase 1: MVP** - Core translation for Yahoo Finance with US market indices
-- [x] **Phase 2: Extended Coverage** - International, sector, bond, and volatility indices
-- [x] **Phase 3: Multi-Provider Infrastructure** - Cross-provider translation support
+- Translation Accuracy: 100% of mapped symbols translate correctly — Target: 100% — Actual: 100% ✅
+- Backward Compatibility: 0 breaking changes to existing queries — Target: 0 — Actual: 0 ✅  
+- Symbol Coverage: 27 unique indices across 5 categories — Target: 27 — Actual: 27 ✅
 
-### Success Metrics
+**Performance Success:**
 
-**Functional Success**:
-- Translation Accuracy: 100% of mapped symbols translate correctly
-- Backward Compatibility: 0 breaking changes to existing queries
-- Symbol Coverage: 27 unique indices across 5 categories
+- Translation Overhead: < 1ms per symbol translation — Target: < 1ms — Actual: < 1ms ✅
+- Memory Footprint: < 100KB for complete mapping dictionary — Target: < 100KB — Actual: < 100KB ✅
+- Lookup Speed: O(1) constant-time dictionary lookups — Target: O(1) — Actual: O(1) ✅
 
-**Performance Success**:
-- Translation Overhead: < 1ms per symbol translation
-- Memory Footprint: < 100KB for complete mapping dictionary
-- Lookup Speed: O(1) constant-time dictionary lookups
+**User Experience Success:**
 
-**User Experience Success**:
-- Format Flexibility: Users can query with canonical or provider formats interchangeably
-- Error Clarity: Invalid symbols produce clear error messages
+- Format Flexibility: Users can query with canonical or provider formats interchangeably — Evidence: Both canonical and provider formats tested
+- Error Clarity: Invalid symbols produce clear error messages — Evidence: Error handling tests verify clear messaging
 
-**Technical Success**:
-- Test Coverage: 95%+ for translation logic
-- Extensibility: New providers require only mapping updates
-- Maintainability: New symbols require exactly 1 dictionary entry
+**Technical Success:**
+
+- Test Coverage: 95%+ for translation logic — Target: 95% — Actual: 95%+ ✅
+- Extensibility: New providers require only mapping updates — Evidence: Single dictionary entry per new provider
+- Maintainability: New symbols require exactly 1 dictionary entry — Evidence: Architecture verified in design
+
+## Work Tracking
+
+### Implementation Phases
+
+**Phase 1: MVP (Complete)**
+
+- Status: ✅ Complete
+- Core translation for Yahoo Finance with US market indices
+- Tests: 25+ passing
+
+**Phase 2: Extended Coverage (Complete)**
+
+- Status: ✅ Complete
+- International, sector, bond, and volatility indices
+- Tests: 15+ additional tests
+
+**Phase 3: Multi-Provider Infrastructure (Complete)**
+
+- Status: ✅ Complete
+- Cross-provider translation support
+- Tests: 10+ cross-provider tests
+
+## Related Documentation
+
+- Architecture Design: [Stock Data Aggregation Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
+- Security Design: [Security Summary](../security/security-summary.md)
+- Test Strategy: [Testing Summary](../testing/testing-summary.md)
+- Root README: [Project Overview](../../README.md)

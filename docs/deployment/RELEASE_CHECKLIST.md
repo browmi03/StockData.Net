@@ -1,8 +1,15 @@
 # Release Checklist
 
-**Purpose:** Ensure each release of StockData.Net MCP Server is thoroughly validated, tested, and deployed with minimal risk.
+## Document Info
 
-**Version:** 1.0.0 (2026-02-28)
+- **Type**: Operational Runbook — Release
+- **Version**: 1.0.0
+- **Purpose**: Ensure each release of StockData.Net MCP Server is thoroughly validated, tested, and deployed with minimal risk
+- **Architecture**: [Canonical Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
+- **Security**: [Security Summary](../security/security-summary.md)
+- **Related Runbooks**: [Deployment Guide](./DEPLOYMENT_GUIDE.md) · [GitHub Secrets Validation](./GITHUB_SECRETS_VALIDATION.md)
+- **Status**: Approved
+- **Last Updated**: 2026-03-09
 
 ---
 
@@ -339,8 +346,10 @@ git push origin v1.0.0
 
 ---
 
-## Related Documentation
+## Related Documents
 
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Platform-specific deployment instructions
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md) — Platform-specific deployment instructions
+- [GitHub Secrets Validation](./GITHUB_SECRETS_VALIDATION.md) — CI/CD secret management
+- [Features Summary](../features/features-summary.md) — Feature specifications
 - [README: Deployment and Versioning](../../README.md#deployment-and-versioning)
-- [GitHub Actions Release Workflow](.github/workflows/release.yml)
+- [GitHub Actions Release Workflow](../../.github/workflows/release.yml)
