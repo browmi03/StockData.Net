@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using StockData.Net;
 using StockData.Net.Clients.AlphaVantage;
 using StockData.Net.Clients.Finnhub;
-using StockData.Net.Clients.Polygon;
 using StockData.Net.Configuration;
 using StockData.Net.Deduplication;
 using StockData.Net.McpServer;
@@ -30,7 +29,6 @@ builder.Services.AddSingleton<IYahooFinanceClient, YahooFinanceClient>();
 builder.Services.AddSingleton<IStockDataProvider, YahooFinanceProvider>();
 
 RegisterFinnhubProvider(builder.Services, config);
-RegisterPolygonProvider(builder.Services, config);
 RegisterAlphaVantageProvider(builder.Services, config);
 
 // Register symbol translation
@@ -83,31 +81,6 @@ static void RegisterFinnhubProvider(IServiceCollection services, McpConfiguratio
             new SecretValue(apiKey),
             providerConfig.RateLimit));
     services.AddSingleton<IStockDataProvider, FinnhubProvider>();
-}
-
-static void RegisterPolygonProvider(IServiceCollection services, McpConfiguration config)
-{
-    var providerConfig = GetProviderConfiguration(config, "polygon");
-    if (providerConfig is null || !providerConfig.Enabled)
-    {
-        return;
-    }
-
-    var apiKey = ResolveProviderApiKey(providerConfig, "POLYGON_API_KEY");
-    if (string.IsNullOrWhiteSpace(apiKey))
-    {
-        Console.WriteLine("[Startup] Polygon provider is enabled but API key is missing. Skipping registration.");
-        return;
-    }
-
-    var baseUrl = ResolveBaseUrl(providerConfig, "https://api.polygon.io/");
-
-    services.AddSingleton<IPolygonClient>(_ =>
-        new PolygonClient(
-            new HttpClient { BaseAddress = new Uri(baseUrl) },
-            new SecretValue(apiKey),
-            providerConfig.RateLimit));
-    services.AddSingleton<IStockDataProvider, PolygonProvider>();
 }
 
 static void RegisterAlphaVantageProvider(IServiceCollection services, McpConfiguration config)
