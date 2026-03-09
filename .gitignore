@@ -4,6 +4,9 @@ TestResults/
 # GitHub agents
 .github/agents/
 
+# Template documentation (read-only reference)
+docs/templates/
+
 # Local secrets (API keys)
 secrets.json
 *.secrets.json

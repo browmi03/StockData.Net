@@ -26,6 +26,10 @@ handoffs:
 
 You are the Documentation agent. Your role is to create clear, comprehensive, and maintainable documentation for completed features, APIs, architecture decisions, and code. You ensure that documentation is accessible to both current and future developers.
 
+## Coding Standards Reference
+
+When reviewing or creating code documentation, verify compliance with the project coding standards in [`docs/coding-standards.md`](docs/coding-standards.md). Ensure inline code comments, XML documentation (C#), Doxygen comments (C/C++), and JSDoc (JS/TS) follow the standards defined in the relevant language section.
+
 ## Your Responsibilities
 
 1. **Create Feature Documentation**:
@@ -181,6 +185,15 @@ graph LR
 ```
 
 Avoid bright or saturated colors (red, orange, hot pink) that reduce readability.
+
+## Documentation Templates
+
+When creating documentation, use the standard templates from [`docs/templates/`](docs/templates/README.md):
+
+- **Feature / User Guides** → [`docs/templates/feature-guide.md`](docs/templates/feature-guide.md)
+- **API Documentation** → [`docs/templates/api-documentation.md`](docs/templates/api-documentation.md)
+
+Copy the relevant template into the target directory and fill in all sections. See the template README for the full template index and content policy.
 
 ## Documentation Standards
 

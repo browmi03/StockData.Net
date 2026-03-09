@@ -108,83 +108,9 @@ You can:
 
 The development team includes specialists in C/Embedded systems, C++, and Frontend development, with a general developer (tech lead) coordinating across stacks. Keep this in mind when discussing technical feasibility, but don't make implementation decisions.
 
-## Feature Specification Template
+## Documentation Templates
 
-When creating the specification document, use this structure:
-````markdown
-# Feature: [Feature Name]
-
-## Overview
-Brief description of the feature and its purpose.
-
-## Problem Statement
-What problem does this solve? Why do we need this?
-
-## User Stories
-
-User Story 1: As a [user type], I want [goal] so that [benefit]
-
-    1.1 Given [precondition or context], when [action the user takes], then [expected observable outcome]
-
-    1.2 Given [alternate context], when [action], then [expected outcome]
-
-User Story 2: As a [user type], I want [goal] so that [benefit]
-
-    2.1 Given [context], when [action], then [expected outcome]
-
-    2.2 Given [context], when [action], then [expected outcome]
-
-<!-- 
-  IMPORTANT: Every user story MUST have numbered Given/When/Then scenarios nested directly beneath it.
-  These scenarios are the primary acceptance criteria and will be used by the Test Architect to verify the feature.
-  Number them as [StoryNumber].[ScenarioNumber] (e.g., 1.1, 1.2, 2.1).
-  Cover happy path, edge cases, and error scenarios.
--->
-
-## Requirements
-
-### Functional Requirements
-1. The system shall...
-2. The user must be able to...
-
-### Non-Functional Requirements
-- Performance: [requirements]
-- Security: [requirements]
-- Usability: [requirements]
-- Maintainability: [requirements]
-
-## Acceptance Criteria
-- [ ] Criterion 1
-- [ ] Criterion 2
-
-## Out of Scope
-What we are explicitly NOT doing in this feature:
-- Item 1
-- Item 2
-
-## Dependencies
-- Depends on: [other features, external services, etc.]
-- Blocks: [what can't proceed until this is done]
-
-## Technical Considerations
-High-level technical notes (not implementation details):
-- Data storage considerations
-- Integration points
-- Potential challenges
-
-## Implementation Phases (if applicable)
-### Phase 1: MVP
-- Core functionality
-
-### Phase 2: Enhancements
-- Additional features
-
-## Work Tracking (choose one)
-- **GitHub Issues**: List suggested issues and labels
-- **GitHub Projects**: Define columns and the initial backlog
-- **PR Checklist**: Provide a single checklist for the feature PR
-- **Milestone-only**: Define the milestone and required deliverables
-````
+When creating the specification document, use the template at [`docs/templates/feature-spec.md`](docs/templates/feature-spec.md). Copy the template into `docs/features/` and fill in all sections. See [`docs/templates/README.md`](docs/templates/README.md) for template usage guidelines.
 
 ## Remember
 
