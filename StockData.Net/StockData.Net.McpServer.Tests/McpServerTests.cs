@@ -90,7 +90,7 @@ public class StockDataMcpServerTests
         var resultJson = JsonSerializer.Serialize(response.Result);
         Assert.Contains("get_historical_stock_prices", resultJson);
         Assert.Contains("get_stock_info", resultJson);
-        Assert.Contains("get_yahoo_finance_news", resultJson);
+        Assert.Contains("get_finance_news", resultJson);
         Assert.Contains("get_market_news", resultJson);
         Assert.Contains("get_stock_actions", resultJson);
         Assert.Contains("get_financial_statement", resultJson);
@@ -261,7 +261,7 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
-    public async Task HandleToolCallAsync_GetYahooFinanceNews_Success()
+    public async Task HandleToolCallAsync_GetFinanceNews_Success()
     {
         // Arrange
         var testData = "Title: Breaking News\nPublisher: Reuters";
@@ -270,7 +270,7 @@ public class StockDataMcpServerTests
             .ReturnsAsync(testData);
 
         var paramsJson = JsonDocument.Parse(@"{
-            ""name"": ""get_yahoo_finance_news"",
+            ""name"": ""get_finance_news"",
             ""arguments"": {
                 ""ticker"": ""GOOGL""
             }
@@ -573,6 +573,38 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
         Assert.Contains("Unknown tool", response.Error.Message);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_TierAwareNotSupportedException_ReturnsFormattedErrorResponse()
+    {
+        // Arrange
+        _mockProvider
+            .Setup(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TierAwareNotSupportedException("finnhub", "GetMarketNewsAsync", availableOnPaidTier: true));
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_market_news"",
+            ""arguments"": {}
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 211,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        // Act
+        var response = await InvokeHandleRequestAsync(request);
+
+        // Assert
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Result);
+        Assert.IsNotNull(response.Error);
+        Assert.AreEqual(-32603, response.Error.Code);
+        Assert.Contains("Provider 'finnhub' does not support GetMarketNewsAsync on the free tier.", response.Error.Message);
+        Assert.Contains("paid subscription", response.Error.Message);
     }
 
     [TestMethod]
