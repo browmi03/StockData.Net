@@ -106,7 +106,7 @@ public sealed class FinnhubProvider : IStockDataProvider
         HolderType holderType,
         CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetHolderInfoAsync), availableOnPaidTier: false);
+        throw new TierAwareNotSupportedException(ProviderId, nameof(GetHolderInfoAsync), availableOnPaidTier: true);
     }
 
     public Task<string> GetOptionExpirationDatesAsync(string ticker, CancellationToken cancellationToken = default)
@@ -152,6 +152,10 @@ public sealed class FinnhubProvider : IStockDataProvider
             return await operation();
         }
         catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ArgumentException)
         {
             throw;
         }
