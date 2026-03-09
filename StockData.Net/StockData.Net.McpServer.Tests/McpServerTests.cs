@@ -98,6 +98,29 @@ public class StockDataMcpServerTests
         Assert.Contains("get_option_expiration_dates", resultJson);
         Assert.Contains("get_option_chain", resultJson);
         Assert.Contains("get_recommendations", resultJson);
+        Assert.DoesNotContain("get_yahoo_finance_news", resultJson);
+    }
+
+    [TestMethod]
+    public async Task HandleRequestAsync_ToolsList_GetFinanceNewsDescription_IsNotYahooExclusive()
+    {
+        var request = new McpRequest
+        {
+            Id = 201,
+            Method = "tools/list"
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        var description = ExtractToolDescription(resultJson, "get_finance_news");
+
+        Assert.IsFalse(string.IsNullOrWhiteSpace(description));
+        Assert.IsFalse(description.Contains("Yahoo Finance", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -576,6 +599,31 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
+    public async Task HandleToolCallAsync_LegacyYahooFinanceNewsTool_ReturnsUnknownToolError()
+    {
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_yahoo_finance_news"",
+            ""arguments"": {
+                ""ticker"": ""AAPL""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 212,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNotNull(response.Error);
+        Assert.Contains("Unknown tool", response.Error.Message);
+        Assert.Contains("get_yahoo_finance_news", response.Error.Message);
+    }
+
+    [TestMethod]
     public async Task HandleToolCallAsync_TierAwareNotSupportedException_ReturnsFormattedErrorResponse()
     {
         // Arrange
@@ -968,6 +1016,22 @@ public class StockDataMcpServerTests
     {
         // Now we can call the internal method directly thanks to InternalsVisibleTo
         return await _server.HandleRequestAsync(request, CancellationToken.None);
+    }
+
+    private static string ExtractToolDescription(string toolsListJson, string toolName)
+    {
+        using var document = JsonDocument.Parse(toolsListJson);
+        var tools = document.RootElement.GetProperty("tools");
+
+        foreach (var tool in tools.EnumerateArray())
+        {
+            if (string.Equals(tool.GetProperty("name").GetString(), toolName, StringComparison.Ordinal))
+            {
+                return tool.GetProperty("description").GetString() ?? string.Empty;
+            }
+        }
+
+        return string.Empty;
     }
 
     #endregion

@@ -3,6 +3,7 @@ using Moq;
 using StockData.Net.Clients.Finnhub;
 using StockData.Net.Models;
 using StockData.Net.Providers;
+using System.Text.Json;
 
 namespace StockData.Net.Tests.Providers;
 
@@ -80,7 +81,7 @@ public class FinnhubProviderTests
     }
 
     [TestMethod]
-    public async Task GetHolderInfoAsync_ThrowsTierAwareNotSupportedException_WithNoPaidTierFlag()
+    public async Task GetHolderInfoAsync_ThrowsTierAwareNotSupportedException_WithPaidTierFlag()
     {
         TierAwareNotSupportedException ex;
         try
@@ -96,7 +97,40 @@ public class FinnhubProviderTests
 
         Assert.AreEqual("finnhub", ex.ProviderId);
         Assert.AreEqual("GetHolderInfoAsync", ex.MethodName);
-        Assert.IsFalse(ex.AvailableOnPaidTier);
+        Assert.IsTrue(ex.AvailableOnPaidTier);
+    }
+
+    [TestMethod]
+    public async Task TierAwareExceptions_UseDistinctMessageFormats_ForPaidAndUnavailableFeatures()
+    {
+        TierAwareNotSupportedException paidTierException;
+        try
+        {
+            await _provider.GetMarketNewsAsync();
+            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+            return;
+        }
+        catch (TierAwareNotSupportedException thrown)
+        {
+            paidTierException = thrown;
+        }
+
+        StringAssert.Contains(paidTierException.Message, "on the free tier");
+        StringAssert.Contains(paidTierException.Message, "paid subscription");
+
+        TierAwareNotSupportedException noTierException;
+        try
+        {
+            await _provider.GetStockActionsAsync("AAPL");
+            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+            return;
+        }
+        catch (TierAwareNotSupportedException thrown)
+        {
+            noTierException = thrown;
+        }
+
+        Assert.IsFalse(noTierException.Message.Contains("free tier", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -186,5 +220,47 @@ public class FinnhubProviderTests
             It.IsAny<CancellationToken>()), Times.Once);
         StringAssert.Contains(json, "SourceProvider");
         StringAssert.Contains(json, "finnhub");
+    }
+
+    [TestMethod]
+    public async Task GetHistoricalPricesAsync_WithEmptyOrNullTicker_ThrowsArgumentException()
+    {
+        try
+        {
+            await _provider.GetHistoricalPricesAsync(string.Empty);
+            Assert.Fail("Expected ArgumentException for empty ticker was not thrown.");
+            return;
+        }
+        catch (ArgumentException)
+        {
+        }
+
+        string? nullTicker = null;
+        try
+        {
+            await _provider.GetHistoricalPricesAsync(nullTicker!);
+            Assert.Fail("Expected ArgumentException for null ticker was not thrown.");
+        }
+        catch (ArgumentException)
+        {
+        }
+    }
+
+    [TestMethod]
+    public async Task GetHistoricalPricesAsync_WithUnknownSymbolReturningNoCandles_ReturnsEmptyResult()
+    {
+        _client.Setup(c => c.GetHistoricalPricesAsync(
+                "UNKNOWN",
+                "D",
+                It.IsAny<DateTime>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<FinnhubCandle>());
+
+        var json = await _provider.GetHistoricalPricesAsync("UNKNOWN", "1mo", "1d");
+        using var document = JsonDocument.Parse(json);
+
+        Assert.AreEqual(JsonValueKind.Array, document.RootElement.ValueKind);
+        Assert.AreEqual(0, document.RootElement.GetArrayLength());
     }
 }
