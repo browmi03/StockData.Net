@@ -87,8 +87,20 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetHistoricalPricesAsync(string ticker, string period = "1mo", string interval = "1d", CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetHistoricalPricesWithProviderAsync(ticker, period, interval, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetHistoricalPricesWithProviderAsync(
+        string ticker,
+        string period = "1mo",
+        string interval = "1d",
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "HistoricalPrices",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -102,8 +114,18 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetStockInfoAsync(string ticker, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetStockInfoWithProviderAsync(ticker, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetStockInfoWithProviderAsync(
+        string ticker,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "StockInfo",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -117,9 +139,31 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetNewsAsync(string ticker, CancellationToken cancellationToken = default)
     {
+        var result = await GetNewsWithProviderAsync(ticker, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetNewsWithProviderAsync(
+        string ticker,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(providerId))
+        {
+            return await ExecuteWithProviderSelectionAsync(
+                "News",
+                providerId,
+                async (provider, ct) =>
+                {
+                    var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
+                    return await provider.GetNewsAsync(translatedSymbol, ct);
+                },
+                cancellationToken);
+        }
+
         if (ShouldAggregateResults("News"))
         {
-            return await ExecuteWithAggregationAsync(
+            return await ExecuteWithAggregationResultAsync(
                 "News",
                 async (provider, ct) =>
                 {
@@ -129,7 +173,7 @@ public class StockDataProviderRouter
                 cancellationToken);
         }
 
-        return await ExecuteWithFailoverAsync(
+        return await ExecuteWithFailoverResultAsync(
             "News",
             async (provider, ct) =>
             {
@@ -144,15 +188,32 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
+        var result = await GetMarketNewsWithProviderAsync(null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetMarketNewsWithProviderAsync(
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(providerId))
+        {
+            return await ExecuteWithProviderSelectionAsync(
+                "MarketNews",
+                providerId,
+                async (provider, ct) => await provider.GetMarketNewsAsync(ct),
+                cancellationToken);
+        }
+
         if (ShouldAggregateResults("MarketNews"))
         {
-            return await ExecuteWithAggregationAsync(
+            return await ExecuteWithAggregationResultAsync(
                 "MarketNews",
                 async (provider, ct) => await provider.GetMarketNewsAsync(ct),
                 cancellationToken);
         }
 
-        return await ExecuteWithFailoverAsync(
+        return await ExecuteWithFailoverResultAsync(
             "MarketNews",
             async (provider, ct) => await provider.GetMarketNewsAsync(ct),
             cancellationToken);
@@ -163,8 +224,18 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetStockActionsWithProviderAsync(ticker, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetStockActionsWithProviderAsync(
+        string ticker,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "StockActions",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -178,8 +249,19 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetFinancialStatementAsync(string ticker, FinancialStatementType statementType, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetFinancialStatementWithProviderAsync(ticker, statementType, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetFinancialStatementWithProviderAsync(
+        string ticker,
+        FinancialStatementType statementType,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "FinancialStatement",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -193,8 +275,19 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetHolderInfoAsync(string ticker, HolderType holderType, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetHolderInfoWithProviderAsync(ticker, holderType, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetHolderInfoWithProviderAsync(
+        string ticker,
+        HolderType holderType,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "HolderInfo",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -208,8 +301,18 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetOptionExpirationDatesAsync(string ticker, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetOptionExpirationDatesWithProviderAsync(ticker, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetOptionExpirationDatesWithProviderAsync(
+        string ticker,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "OptionExpirationDates",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -223,8 +326,20 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetOptionChainAsync(string ticker, string expirationDate, OptionType optionType, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetOptionChainWithProviderAsync(ticker, expirationDate, optionType, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetOptionChainWithProviderAsync(
+        string ticker,
+        string expirationDate,
+        OptionType optionType,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "OptionChain",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -238,8 +353,20 @@ public class StockDataProviderRouter
     /// </summary>
     public async Task<string> GetRecommendationsAsync(string ticker, RecommendationType recommendationType, int monthsBack = 12, CancellationToken cancellationToken = default)
     {
-        return await ExecuteWithFailoverAsync(
+        var result = await GetRecommendationsWithProviderAsync(ticker, recommendationType, monthsBack, null, cancellationToken);
+        return result.Result;
+    }
+
+    public async Task<ProviderResult> GetRecommendationsWithProviderAsync(
+        string ticker,
+        RecommendationType recommendationType,
+        int monthsBack = 12,
+        string? providerId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithProviderSelectionAsync(
             "Recommendations",
+            providerId,
             async (provider, ct) =>
             {
                 var translatedSymbol = _symbolTranslator?.Translate(ticker, provider.ProviderId) ?? ticker;
@@ -248,10 +375,85 @@ public class StockDataProviderRouter
             cancellationToken);
     }
 
+    public IReadOnlyCollection<string> GetRegisteredProviderIds()
+    {
+        return _providers.Keys.ToList().AsReadOnly();
+    }
+
+    private async Task<ProviderResult> ExecuteWithProviderSelectionAsync(
+        string dataType,
+        string? explicitProviderId,
+        Func<IStockDataProvider, CancellationToken, Task<string>> operation,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitProviderId))
+        {
+            return await ExecuteWithExplicitProviderAsync(dataType, explicitProviderId, operation, cancellationToken);
+        }
+
+        return await ExecuteWithFailoverResultAsync(dataType, operation, cancellationToken);
+    }
+
+    private async Task<ProviderResult> ExecuteWithExplicitProviderAsync(
+        string dataType,
+        string explicitProviderId,
+        Func<IStockDataProvider, CancellationToken, Task<string>> operation,
+        CancellationToken cancellationToken)
+    {
+        var normalizedProviderId = NormalizeProviderId(explicitProviderId);
+        var startTime = Stopwatch.GetTimestamp();
+
+        if (!_providers.TryGetValue(normalizedProviderId, out var provider))
+        {
+            throw new InvalidOperationException($"Provider '{explicitProviderId}' is not available.");
+        }
+
+        _logger?.LogInformation(
+            "Provider selection audit: method=explicit dataType={DataType} provider={ProviderId}",
+            dataType,
+            normalizedProviderId);
+
+        var requestStart = Stopwatch.GetTimestamp();
+
+        try
+        {
+            var response = await operation(provider, cancellationToken);
+
+            var requestDuration = Stopwatch.GetElapsedTime(requestStart);
+            var totalDuration = Stopwatch.GetElapsedTime(startTime);
+            _logger?.LogInformation(
+                "Explicit provider request succeeded for {DataType} with provider {ProviderId} in {Duration}ms (total: {TotalDuration}ms)",
+                dataType,
+                normalizedProviderId,
+                requestDuration.TotalMilliseconds,
+                totalDuration.TotalMilliseconds);
+
+            return new ProviderResult(response, normalizedProviderId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(
+                ex,
+                "Provider selection audit: method=explicit dataType={DataType} provider={ProviderId} outcome=failed",
+                dataType,
+                normalizedProviderId);
+            throw;
+        }
+    }
+
     /// <summary>
     /// Executes a provider operation with failover chain support
     /// </summary>
     private async Task<string> ExecuteWithFailoverAsync(
+        string dataType,
+        Func<IStockDataProvider, CancellationToken, Task<string>> operation,
+        CancellationToken cancellationToken)
+    {
+        var result = await ExecuteWithFailoverResultAsync(dataType, operation, cancellationToken);
+        return result.Result;
+    }
+
+    private async Task<ProviderResult> ExecuteWithFailoverResultAsync(
         string dataType,
         Func<IStockDataProvider, CancellationToken, Task<string>> operation,
         CancellationToken cancellationToken)
@@ -314,7 +516,7 @@ public class StockDataProviderRouter
                     "{DataType} request succeeded with provider {ProviderId} in {Duration}ms (total: {TotalDuration}ms)",
                     dataType, providerId, requestDuration.TotalMilliseconds, totalDuration.TotalMilliseconds);
 
-                return result;
+                return new ProviderResult(result, providerId);
             }
             catch (CircuitBreakerOpenException ex)
             {
@@ -364,6 +566,15 @@ public class StockDataProviderRouter
     /// Executes a provider operation by aggregating successful provider responses.
     /// </summary>
     private async Task<string> ExecuteWithAggregationAsync(
+        string dataType,
+        Func<IStockDataProvider, CancellationToken, Task<string>> operation,
+        CancellationToken cancellationToken)
+    {
+        var result = await ExecuteWithAggregationResultAsync(dataType, operation, cancellationToken);
+        return result.Result;
+    }
+
+    private async Task<ProviderResult> ExecuteWithAggregationResultAsync(
         string dataType,
         Func<IStockDataProvider, CancellationToken, Task<string>> operation,
         CancellationToken cancellationToken)
@@ -460,14 +671,17 @@ public class StockDataProviderRouter
             .Where(id => successfulResponses.ContainsKey(id))
             .ToDictionary(id => id, id => successfulResponses[id], StringComparer.OrdinalIgnoreCase);
 
+        var selectedProviderId = orderedSuccessfulResponses.Keys.FirstOrDefault() ?? providerChain.First();
+
         if (_configuration.NewsDeduplication.Enabled)
         {
             try
             {
-                return await _newsDeduplicator.DeduplicateAsync(
+                var deduplicated = await _newsDeduplicator.DeduplicateAsync(
                     orderedSuccessfulResponses,
                     _configuration.NewsDeduplication,
                     cancellationToken);
+                return new ProviderResult(deduplicated, selectedProviderId);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -481,7 +695,7 @@ public class StockDataProviderRouter
                     dataType,
                     ex.GetType().Name,
                     sanitizedMessage);
-                return MergeRawNewsResponses(orderedSuccessfulResponses.Values);
+                return new ProviderResult(MergeRawNewsResponses(orderedSuccessfulResponses.Values), selectedProviderId);
             }
             catch (Exception ex)
             {
@@ -491,11 +705,11 @@ public class StockDataProviderRouter
                     dataType,
                     ex.GetType().Name,
                     sanitizedMessage);
-                return MergeRawNewsResponses(orderedSuccessfulResponses.Values);
+                return new ProviderResult(MergeRawNewsResponses(orderedSuccessfulResponses.Values), selectedProviderId);
             }
         }
 
-        return MergeRawNewsResponses(orderedSuccessfulResponses.Values);
+        return new ProviderResult(MergeRawNewsResponses(orderedSuccessfulResponses.Values), selectedProviderId);
     }
 
     private async Task<AggregationProviderResult> ExecuteAggregationProviderRequestAsync(

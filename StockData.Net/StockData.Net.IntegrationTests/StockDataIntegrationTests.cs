@@ -18,7 +18,32 @@ public class StockDataIntegrationTests
     [TestInitialize]
     public void Setup()
     {
+        // Skip integration tests in CI environments that can't access external APIs
+        if (IsRunningInCI())
+        {
+            Assert.Inconclusive("Integration tests requiring external API access are skipped in CI environment. Run locally to test against live Yahoo Finance API.");
+        }
+
         _client = new YahooFinanceClient();
+    }
+
+    /// <summary>
+    /// Detects if the tests are running in a CI environment (GitHub Actions, etc.)
+    /// </summary>
+    private static bool IsRunningInCI()
+    {
+        // GitHub Actions sets GITHUB_ACTIONS environment variable
+        var githubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+        
+        // Generic CI detection
+        var ciEnv = Environment.GetEnvironmentVariable("CI");
+        
+        // Check for other common CI environment variables
+        var runnerEnv = Environment.GetEnvironmentVariable("RUNNER_OS");
+        
+        return !string.IsNullOrEmpty(githubActions) || 
+               !string.IsNullOrEmpty(ciEnv) || 
+               !string.IsNullOrEmpty(runnerEnv);
     }
 
     [TestCleanup]

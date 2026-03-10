@@ -12,7 +12,7 @@ namespace StockData.Net.McpServer.Tests;
 public class NewsAggregationMcpServerTests
 {
     [TestMethod]
-    public async Task HandleRequestAsync_GetFinanceNews_WithAggregationEnabled_ReturnsDeduplicatedResponse()
+    public async Task HandleRequestAsync_GetFinanceNews_WithoutExplicitProvider_UsesConfiguredDefaultProvider()
     {
         var primary = CreateProvider("primary_provider");
         var secondary = CreateProvider("secondary_provider");
@@ -25,8 +25,9 @@ public class NewsAggregationMcpServerTests
         secondary.Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildArticle("Apple Earnings Beat Expectations", "Bloomberg", "https://example.com/b", newsDate2));
 
-        var router = new StockDataProviderRouter(CreateConfiguration(), new[] { primary.Object, secondary.Object });
-        var server = new StockDataMcpServer(router);
+        var configuration = CreateConfiguration();
+        var router = new StockDataProviderRouter(configuration, new[] { primary.Object, secondary.Object });
+        var server = new StockDataMcpServer(router, configuration);
 
         var requestJson = JsonDocument.Parse(@"{
             ""name"": ""get_finance_news"",
@@ -45,7 +46,11 @@ public class NewsAggregationMcpServerTests
         Assert.IsNull(response.Error);
         var responseJson = JsonSerializer.Serialize(response.Result);
         Assert.Contains("Apple Earnings Beat Expectations", responseJson);
-        Assert.Contains("Sources: Bloomberg, Reuters", responseJson);
+        Assert.Contains("Reuters", responseJson);
+        Assert.DoesNotContain("Bloomberg", responseJson);
+
+        primary.Verify(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        secondary.Verify(p => p.GetNewsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private static McpConfiguration CreateConfiguration()
@@ -82,6 +87,18 @@ public class NewsAggregationMcpServerTests
                         AggregateResults = true,
                         TimeoutSeconds = 30
                     }
+                }
+            },
+            ProviderSelection = new ProviderSelectionConfiguration
+            {
+                Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["primary"] = "primary_provider",
+                    ["secondary"] = "secondary_provider"
+                },
+                DefaultProvider = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["News"] = "primary_provider"
                 }
             },
             NewsDeduplication = new NewsDeduplicationConfiguration
