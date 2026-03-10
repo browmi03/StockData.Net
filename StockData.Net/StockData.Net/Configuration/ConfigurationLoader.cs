@@ -128,6 +128,7 @@ public class ConfigurationLoader : IConfigurationLoader
                     Type = "YahooFinanceProvider",
                     Enabled = true,
                     Priority = 1,
+                    Tier = "free",
                     Settings = new Dictionary<string, string>(),
                     HealthCheck = new HealthCheckConfiguration
                     {
@@ -142,6 +143,7 @@ public class ConfigurationLoader : IConfigurationLoader
                     Type = "FinnhubProvider",
                     Enabled = true,
                     Priority = 2,
+                    Tier = "free",
                     Settings = new Dictionary<string, string>
                     {
                         ["baseUrl"] = "https://finnhub.io/api/v1"
@@ -165,6 +167,7 @@ public class ConfigurationLoader : IConfigurationLoader
                     Type = "AlphaVantageProvider",
                     Enabled = true,
                     Priority = 3,
+                    Tier = "free",
                     Settings = new Dictionary<string, string>
                     {
                         ["baseUrl"] = "https://www.alphavantage.co"
@@ -181,6 +184,30 @@ public class ConfigurationLoader : IConfigurationLoader
                         IntervalSeconds = 300,
                         TimeoutSeconds = 10
                     }
+                }
+            },
+            ProviderSelection = new ProviderSelectionConfiguration
+            {
+                Aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["yahoo"] = "yahoo_finance",
+                    ["yahoo finance"] = "yahoo_finance",
+                    ["alphavantage"] = "alphavantage",
+                    ["alpha vantage"] = "alphavantage",
+                    ["finnhub"] = "finnhub"
+                },
+                DefaultProvider = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["HistoricalPrices"] = "yahoo_finance",
+                    ["StockInfo"] = "yahoo_finance",
+                    ["News"] = "yahoo_finance",
+                    ["MarketNews"] = "yahoo_finance",
+                    ["StockActions"] = "yahoo_finance",
+                    ["FinancialStatement"] = "yahoo_finance",
+                    ["HolderInfo"] = "yahoo_finance",
+                    ["OptionExpirationDates"] = "yahoo_finance",
+                    ["OptionChain"] = "yahoo_finance",
+                    ["Recommendations"] = "yahoo_finance"
                 }
             },
             Routing = new RoutingConfiguration
@@ -327,7 +354,7 @@ public class ConfigurationLoader : IConfigurationLoader
         // Validate routing references
         if (config.Routing?.DataTypeRouting != null)
         {
-            var providerIds = config.Providers.Select(p => p.Id).ToHashSet();
+            var providerIds = config.Providers.Select(p => p.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
             
             foreach (var routing in config.Routing.DataTypeRouting.Values)
             {
@@ -348,6 +375,9 @@ public class ConfigurationLoader : IConfigurationLoader
                 }
             }
         }
+
+        ValidateProviderSelection(config);
+        ValidateProviderTiers(config);
 
         if (config.NewsDeduplication != null)
         {
@@ -370,6 +400,66 @@ public class ConfigurationLoader : IConfigurationLoader
             {
                 throw new InvalidOperationException(
                     "NewsDeduplication.MaxArticlesForComparison must be between 10 and 1000");
+            }
+        }
+    }
+
+    private static void ValidateProviderSelection(McpConfiguration config)
+    {
+        var providerIds = config.Providers
+            .Select(p => p.Id)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var alias in config.ProviderSelection.Aliases)
+        {
+            if (string.IsNullOrWhiteSpace(alias.Key))
+            {
+                throw new InvalidOperationException("ProviderSelection alias key cannot be empty");
+            }
+
+            if (string.IsNullOrWhiteSpace(alias.Value) || !providerIds.Contains(alias.Value))
+            {
+                throw new InvalidOperationException(
+                    $"ProviderSelection alias '{alias.Key}' references unknown provider '{alias.Value}'");
+            }
+        }
+
+        foreach (var defaultProvider in config.ProviderSelection.DefaultProvider)
+        {
+            if (string.IsNullOrWhiteSpace(defaultProvider.Value))
+            {
+                continue;
+            }
+
+            if (!providerIds.Contains(defaultProvider.Value))
+            {
+                throw new InvalidOperationException(
+                    $"ProviderSelection default for '{defaultProvider.Key}' references unknown provider '{defaultProvider.Value}'");
+            }
+        }
+    }
+
+    private static void ValidateProviderTiers(McpConfiguration config)
+    {
+        var allowedTiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "free",
+            "premium",
+            "enterprise"
+        };
+
+        foreach (var provider in config.Providers)
+        {
+            if (string.IsNullOrWhiteSpace(provider.Tier))
+            {
+                provider.Tier = "free";
+                continue;
+            }
+
+            if (!allowedTiers.Contains(provider.Tier))
+            {
+                throw new InvalidOperationException(
+                    $"Provider tier must be 'free', 'premium', or 'enterprise', got: '{provider.Tier}'");
             }
         }
     }

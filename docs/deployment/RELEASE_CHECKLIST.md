@@ -13,6 +13,219 @@
 
 ---
 
+## Release Feature: Provider Selection
+
+**Release Version:** v1.1.0  
+**Feature Status:** ✅ Released  
+**Release Date:** 2026-03-09
+
+### Overview
+
+The Provider Selection feature enables users to explicitly choose financial data providers (Yahoo Finance, Finnhub, Alpha Vantage) through an optional `provider` parameter on all MCP tools. This provides visibility, control, and cost tracking for data sources.
+
+### Feature Availability
+
+**Supported in:** StockData.Net MCP Server v1.1.0+  
+**MCP Tools Updated:** All 10 tools now support the optional `provider` parameter:
+
+1. `get_historical_stock_prices`
+2. `get_stock_info`
+3. `get_finance_news`
+4. `get_market_news`
+5. `get_stock_actions`
+6. `get_financial_statement`
+7. `get_holder_info`
+8. `get_option_expiration_dates`
+9. `get_option_chain`
+10. `get_recommendations`
+
+### Breaking Changes
+
+**None.** Provider Selection is fully backward compatible:
+
+- ✅ The `provider` parameter is **optional** on all tools
+- ✅ Existing clients work without changes
+- ✅ Default provider behavior matches previous routing logic
+- ✅ Response format is unchanged (metadata is additive)
+
+### Configuration Changes
+
+**Optional Configuration Updates:**
+
+The feature works out-of-the-box with **no configuration changes required**. Default configuration includes:
+
+- **Aliases**: `yahoo`, `yahoo finance`, `alphavantage`, `alpha vantage`, `finnhub`
+- **Default Provider**: Yahoo Finance for all data types
+- **Provider Tiers**: All providers set to `"free"` tier
+
+**To customize configuration**, update `appsettings.json`:
+
+```json
+{
+  "providerSelection": {
+    "aliases": {
+      "yahoo": "yahoo_finance",
+      "alphavantage": "alphavantage",
+      "finnhub": "finnhub"
+    },
+    "defaultProvider": {
+      "StockInfo": "yahoo_finance",
+      "HistoricalPrices": "yahoo_finance"
+    }
+  },
+  "providers": [
+    {
+      "id": "yahoo_finance",
+      "tier": "free"
+    }
+  ]
+}
+```
+
+See [Configuration Reference](provider-selection-configuration.md) for full details.
+
+### New MCP Tool Parameters
+
+All 10 tools now accept an optional `provider` parameter:
+
+**Parameter Schema:**
+
+| Parameter | Type | Required | Valid Values | Description |
+| --- | --- | --- | --- | --- |
+| `provider` | string | No | `yahoo`, `alphavantage`, `finnhub` | Explicitly select a data provider. Aliases supported. |
+
+**Example:**
+
+```json
+{
+  "name": "get_stock_info",
+  "arguments": {
+    "ticker": "AAPL",
+    "provider": "yahoo"
+  }
+}
+```
+
+### New Response Metadata Fields
+
+All successful responses now include metadata identifying the provider and tier:
+
+**Metadata Schema:**
+
+```json
+{
+  "_meta": {
+    "serviceKey": "yahoo",
+    "tier": "free"
+  }
+}
+```
+
+| Field | Type | Description | Example Values |
+| --- | --- | --- | --- |
+| `serviceKey` | string | Provider that fulfilled the request | `"yahoo"`, `"finnhub"`, `"alphavantage"` |
+| `tier` | string | Provider cost tier | `"free"`, `"premium"`, `"enterprise"` |
+
+### Validation Behavior at Startup
+
+**Startup Validation:**
+
+The MCP server validates provider selection configuration at startup:
+
+- ✅ All alias targets must reference valid provider IDs
+- ✅ All default provider values must reference enabled providers
+- ✅ Provider tier values must be `"free"`, `"premium"`, or `"enterprise"`
+- ✅ Provider names must be alphanumeric with underscores (max 50 chars)
+
+**If validation fails**, the server logs an error and **exits** with a configuration error message.
+
+**Example validation error:**
+
+```
+Configuration error: Alias 'yahoo' references unknown provider 'yahoo_finance_v2'.
+Valid provider IDs: yahoo_finance, finnhub, alphavantage
+```
+
+### Supported Providers and Aliases
+
+**Providers:**
+
+| Provider | ID | Aliases | Tier |
+| --- | --- | --- | --- |
+| Yahoo Finance | `yahoo_finance` | `yahoo`, `yahoo finance` | Free |
+| Finnhub | `finnhub` | `finnhub` | Free |
+| Alpha Vantage | `alphavantage` | `alphavantage`, `alpha vantage` | Free |
+
+**Aliases are case-insensitive:** `"Yahoo"`, `"yahoo"`, and `"YAHOO"` all resolve to Yahoo Finance.
+
+### Testing & Validation
+
+**Pre-Release Testing Completed:**
+
+- ✅ Unit tests for provider validation logic (100% coverage)
+- ✅ Integration tests for all 10 tools with explicit provider selection
+- ✅ Error handling tests for invalid/unavailable providers
+- ✅ Metadata enrichment tests for all response types
+- ✅ Configuration validation tests at startup
+- ✅ Backward compatibility tests (no provider parameter)
+
+### Documentation
+
+**Documentation Available:**
+
+1. **[User Guide](../features/provider-selection-user-guide.md)** — End-user documentation for using provider selection
+2. **[Developer Integration Guide](../architecture/provider-selection-integration-guide.md)** — API integration guide for developers
+3. **[Configuration Reference](provider-selection-configuration.md)** — Admin guide for configuration
+4. **[API Documentation](../architecture/provider-selection-api.md)** — Complete API reference for all tools
+5. **[Feature Specification](../features/provider-selection.md)** — Complete feature requirements
+6. **[Architecture Overview](../architecture/provider-selection-architecture.md)** — Technical architecture and design
+7. **[Security Design](../security/provider-selection-security.md)** — Security considerations
+
+### Migration Guide
+
+**No migration required.** Provider Selection is fully backward compatible.
+
+**Optional Enhancements for AI Clients:**
+
+1. Update AI prompts to detect provider intent in user requests
+2. Parse `_meta` field from responses to display provider source
+3. Add user-facing provider selection options
+
+See [Integration Guide](../architecture/provider-selection-integration-guide.md) for details.
+
+### Known Limitations
+
+- **Multi-provider aggregation not supported** — Each request routes to a single provider
+- **No automatic provider recommendation** — Users must choose provider explicitly
+- **Explicit selection bypasses failover** — No automatic fallback when explicitly selecting a provider
+
+### Release Notes Summary
+
+**Added:**
+
+- ✅ Optional `provider` parameter on all 10 MCP tools
+- ✅ Response metadata with `serviceKey` and `tier` fields
+- ✅ Configuration schema for provider aliases and defaults
+- ✅ Runtime validation for provider names
+- ✅ Clear error messages for invalid/unavailable providers
+
+**Changed:**
+
+- ✅ All MCP tool schemas updated with `provider` parameter
+- ✅ All responses now include `_meta` object
+
+**Fixed:**
+
+- None (new feature)
+
+**Security:**
+
+- ✅ Provider name input sanitization and validation
+- ✅ API keys protected (never exposed in error messages)
+- ✅ Rate limiting enforced regardless of provider selection mode
+
+---
+
 ## Pre-Release Phase
 
 ### 1. Code Readiness
