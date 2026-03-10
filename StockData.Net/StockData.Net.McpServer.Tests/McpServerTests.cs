@@ -124,6 +124,27 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
+    public async Task HandleRequestAsync_ToolsList_IncludesProviderParameter()
+    {
+        var request = new McpRequest
+        {
+            Id = 202,
+            Method = "tools/list"
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("\"provider\"", resultJson);
+        Assert.Contains("alphavantage", resultJson);
+        Assert.Contains("finnhub", resultJson);
+        Assert.Contains("yahoo", resultJson);
+    }
+
+    [TestMethod]
     public async Task HandleRequestAsync_UnknownMethod_ReturnsError()
     {
         // Arrange
@@ -215,6 +236,201 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNull(response.Error);
         _mockProvider.Verify(p => p.GetStockInfoAsync("MSFT", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_GetStockInfo_WithExplicitProvider_ReturnsMetadata()
+    {
+        _mockProvider
+            .Setup(p => p.GetStockInfoAsync("MSFT", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"symbol\":\"MSFT\",\"price\":380.0}");
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""MSFT"",
+                ""provider"": ""yahoo""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 1121,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("serviceKey", resultJson);
+        Assert.Contains("yahoo", resultJson);
+        Assert.Contains("tier", resultJson);
+        Assert.Contains("free", resultJson);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_GetStockInfo_WithoutProvider_UsesConfiguredDefaultProvider()
+    {
+        var yahoo = CreateProviderMock("yahoo_finance");
+        var finnhub = CreateProviderMock("finnhub");
+
+        yahoo
+            .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"symbol\":\"AAPL\",\"provider\":\"yahoo\"}");
+        finnhub
+            .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"symbol\":\"AAPL\",\"provider\":\"finnhub\"}");
+
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        config.ProviderSelection.DefaultProvider["StockInfo"] = "finnhub";
+
+        var router = new StockDataProviderRouter(config, new[] { yahoo.Object, finnhub.Object });
+        var server = new StockDataMcpServer(router, config);
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""AAPL""
+            }
+        }");
+
+        var response = await server.HandleRequestAsync(new McpRequest
+        {
+            Id = 1122,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        }, CancellationToken.None);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("serviceKey", resultJson);
+        Assert.Contains("finnhub", resultJson);
+
+        finnhub.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        yahoo.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    [DataRow("get_stock_info")]
+    [DataRow("get_historical_stock_prices")]
+    [DataRow("get_financial_statement")]
+    [DataRow("get_news")]
+    [DataRow("get_company_info")]
+    [DataRow("get_stock_quote")]
+    [DataRow("get_stock_dividends")]
+    [DataRow("get_stock_splits")]
+    [DataRow("get_earnings")]
+    [DataRow("get_analyst_recommendations")]
+    public async Task HandleToolCallAsync_AllTools_WithExplicitProvider_ReturnMetadata(string acceptanceToolName)
+    {
+        var implementedToolName = MapAcceptanceToolToImplementedTool(acceptanceToolName);
+
+        ConfigureProviderBehaviorForTool(_mockProvider, implementedToolName);
+
+        using var paramsJson = BuildToolCallParams(implementedToolName, includeProvider: true, provider: "yahoo");
+        var request = new McpRequest
+        {
+            Id = 1123,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("serviceKey", resultJson);
+        Assert.Contains("yahoo", resultJson);
+        Assert.Contains("tier", resultJson);
+        Assert.Contains("free", resultJson);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_GetStockInfo_WithAlphaVantageProvider_ReturnsCorrectMetadata()
+    {
+        var yahoo = CreateProviderMock("yahoo_finance");
+        var alphaVantage = CreateProviderMock("alphavantage");
+        var finnhub = CreateProviderMock("finnhub");
+
+        alphaVantage
+            .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"symbol\":\"AAPL\",\"provider\":\"alphavantage\"}");
+
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var router = new StockDataProviderRouter(config, new[] { yahoo.Object, alphaVantage.Object, finnhub.Object });
+        var server = new StockDataMcpServer(router, config);
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""AAPL"",
+                ""provider"": ""alphavantage""
+            }
+        }");
+
+        var response = await server.HandleRequestAsync(new McpRequest
+        {
+            Id = 1124,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        }, CancellationToken.None);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("serviceKey", resultJson);
+        Assert.Contains("alphavantage", resultJson);
+        Assert.Contains("tier", resultJson);
+        Assert.Contains("free", resultJson);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_GetStockInfo_WithFinnhubProvider_ReturnsCorrectMetadata()
+    {
+        var yahoo = CreateProviderMock("yahoo_finance");
+        var alphaVantage = CreateProviderMock("alphavantage");
+        var finnhub = CreateProviderMock("finnhub");
+
+        finnhub
+            .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{\"symbol\":\"AAPL\",\"provider\":\"finnhub\"}");
+
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var router = new StockDataProviderRouter(config, new[] { yahoo.Object, alphaVantage.Object, finnhub.Object });
+        var server = new StockDataMcpServer(router, config);
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""AAPL"",
+                ""provider"": ""finnhub""
+            }
+        }");
+
+        var response = await server.HandleRequestAsync(new McpRequest
+        {
+            Id = 1125,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        }, CancellationToken.None);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        Assert.Contains("serviceKey", resultJson);
+        Assert.Contains("finnhub", resultJson);
+        Assert.Contains("tier", resultJson);
+        Assert.Contains("free", resultJson);
     }
 
     [TestMethod]
@@ -596,6 +812,66 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
         Assert.Contains("Unknown tool", response.Error.Message);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_InvalidProvider_ReturnsSupportedProvidersError()
+    {
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""AAPL"",
+                ""provider"": ""bloomberg""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 221,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNotNull(response.Error);
+        Assert.Contains("Supported providers", response.Error.Message);
+        Assert.Contains("yahoo", response.Error.Message);
+    }
+
+    [TestMethod]
+    public async Task HandleToolCallAsync_ExplicitProviderFailure_IncludesProviderMetadataInErrorData()
+    {
+        _mockProvider
+            .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("upstream timeout"));
+
+        var paramsJson = JsonDocument.Parse(@"{
+            ""name"": ""get_stock_info"",
+            ""arguments"": {
+                ""ticker"": ""AAPL"",
+                ""provider"": ""yahoo""
+            }
+        }");
+
+        var request = new McpRequest
+        {
+            Id = 222,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNotNull(response.Error);
+        Assert.IsNotNull(response.Error.Data);
+
+        var dataJson = JsonSerializer.Serialize(response.Error.Data);
+        Assert.Contains("serviceKey", dataJson);
+        Assert.Contains("yahoo", dataJson);
+        Assert.Contains("tier", dataJson);
     }
 
     [TestMethod]
@@ -1032,6 +1308,155 @@ public class StockDataMcpServerTests
         }
 
         return string.Empty;
+    }
+
+    private static string MapAcceptanceToolToImplementedTool(string acceptanceToolName)
+    {
+        return acceptanceToolName switch
+        {
+            "get_news" => "get_finance_news",
+            "get_company_info" => "get_holder_info",
+            "get_stock_quote" => "get_stock_info",
+            "get_stock_dividends" => "get_stock_actions",
+            "get_stock_splits" => "get_stock_actions",
+            "get_earnings" => "get_financial_statement",
+            "get_analyst_recommendations" => "get_recommendations",
+            _ => acceptanceToolName
+        };
+    }
+
+    private static JsonDocument BuildToolCallParams(string implementedToolName, bool includeProvider, string provider)
+    {
+        var arguments = new Dictionary<string, object?>();
+
+        switch (implementedToolName)
+        {
+            case "get_historical_stock_prices":
+                arguments["ticker"] = "AAPL";
+                arguments["period"] = "1mo";
+                arguments["interval"] = "1d";
+                break;
+            case "get_stock_info":
+                arguments["ticker"] = "AAPL";
+                break;
+            case "get_finance_news":
+                arguments["ticker"] = "AAPL";
+                break;
+            case "get_market_news":
+                break;
+            case "get_stock_actions":
+                arguments["ticker"] = "AAPL";
+                break;
+            case "get_financial_statement":
+                arguments["ticker"] = "AAPL";
+                arguments["financial_type"] = "income_stmt";
+                break;
+            case "get_holder_info":
+                arguments["ticker"] = "AAPL";
+                arguments["holder_type"] = "major_holders";
+                break;
+            case "get_option_expiration_dates":
+                arguments["ticker"] = "AAPL";
+                break;
+            case "get_option_chain":
+                arguments["ticker"] = "AAPL";
+                arguments["expiration_date"] = "2026-12-19";
+                arguments["option_type"] = "calls";
+                break;
+            case "get_recommendations":
+                arguments["ticker"] = "AAPL";
+                arguments["recommendation_type"] = "recommendations";
+                arguments["months_back"] = 12;
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported tool for test: {implementedToolName}");
+        }
+
+        if (includeProvider)
+        {
+            arguments["provider"] = provider;
+        }
+
+        var payload = new
+        {
+            name = implementedToolName,
+            arguments
+        };
+
+        return JsonDocument.Parse(JsonSerializer.Serialize(payload));
+    }
+
+    private static void ConfigureProviderBehaviorForTool(Mock<IStockDataProvider> provider, string implementedToolName)
+    {
+        switch (implementedToolName)
+        {
+            case "get_historical_stock_prices":
+                provider
+                    .Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_stock_info":
+                provider
+                    .Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("{}");
+                break;
+            case "get_finance_news":
+                provider
+                    .Setup(p => p.GetNewsAsync("AAPL", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_market_news":
+                provider
+                    .Setup(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_stock_actions":
+                provider
+                    .Setup(p => p.GetStockActionsAsync("AAPL", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_financial_statement":
+                provider
+                    .Setup(p => p.GetFinancialStatementAsync("AAPL", FinancialStatementType.IncomeStatement, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_holder_info":
+                provider
+                    .Setup(p => p.GetHolderInfoAsync("AAPL", HolderType.MajorHolders, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_option_expiration_dates":
+                provider
+                    .Setup(p => p.GetOptionExpirationDatesAsync("AAPL", It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_option_chain":
+                provider
+                    .Setup(p => p.GetOptionChainAsync("AAPL", "2026-12-19", OptionType.Calls, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            case "get_recommendations":
+                provider
+                    .Setup(p => p.GetRecommendationsAsync("AAPL", RecommendationType.Recommendations, 12, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync("[]");
+                break;
+            default:
+                throw new InvalidOperationException($"Unsupported tool for behavior setup: {implementedToolName}");
+        }
+    }
+
+    private static Mock<IStockDataProvider> CreateProviderMock(string providerId)
+    {
+        var provider = new Mock<IStockDataProvider>();
+        provider.Setup(p => p.ProviderId).Returns(providerId);
+        provider.Setup(p => p.ProviderName).Returns(providerId);
+        provider.Setup(p => p.Version).Returns("1.0.0");
+
+        provider
+            .Setup(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{}");
+
+        return provider;
     }
 
     #endregion

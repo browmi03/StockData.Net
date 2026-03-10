@@ -50,7 +50,13 @@ builder.Services.AddSingleton<StockDataProviderRouter>(sp =>
 });
 
 // Register MCP server
-builder.Services.AddSingleton<StockDataMcpServer>();
+builder.Services.AddSingleton<StockDataMcpServer>(sp =>
+{
+    var router = sp.GetRequiredService<StockDataProviderRouter>();
+    var configuration = sp.GetRequiredService<McpConfiguration>();
+    var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<StockDataMcpServer>>();
+    return new StockDataMcpServer(router, configuration, logger);
+});
 
 var host = builder.Build();
 
