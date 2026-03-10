@@ -313,6 +313,68 @@ public class ConfigurationLoaderTests
     // Configuration Validation Tests
 
     [TestMethod]
+    public async Task LoadConfigurationAsync_WithInvalidProviderTier_ThrowsRequiredErrorMessage()
+    {
+        // Arrange
+        var configPath = Path.Combine(_testConfigDirectory, "invalid_tier_config.json");
+        var configJson = @"{
+            ""version"": ""1.0"",
+            ""providers"": [
+                {
+                    ""id"": ""test_provider"",
+                    ""type"": ""TestProvider"",
+                    ""enabled"": true,
+                    ""priority"": 1,
+                    ""tier"": ""gold"",
+                    ""settings"": {},
+                    ""healthCheck"": {
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }
+                }
+            ],
+            ""providerSelection"": {
+                ""aliases"": {
+                    ""test"": ""test_provider""
+                },
+                ""defaultProvider"": {
+                    ""StockInfo"": ""test_provider""
+                }
+            },
+            ""routing"": {
+                ""defaultStrategy"": ""PrimaryWithFailover"",
+                ""dataTypeRouting"": {
+                    ""StockInfo"": {
+                        ""primaryProviderId"": ""test_provider"",
+                        ""fallbackProviderIds"": [],
+                        ""timeoutSeconds"": 30
+                    }
+                }
+            }
+        }";
+        await File.WriteAllTextAsync(configPath, configJson);
+
+        // Act
+        InvalidOperationException exception;
+        try
+        {
+            await _loader.LoadConfigurationAsync(configPath);
+            Assert.Fail("Expected InvalidOperationException was not thrown.");
+            return;
+        }
+        catch (InvalidOperationException ex)
+        {
+            exception = ex;
+        }
+
+        // Assert
+        Assert.AreEqual(
+            "Provider tier must be 'free', 'premium', or 'enterprise', got: 'gold'",
+            exception.Message);
+    }
+
+    [TestMethod]
     public async Task LoadConfigurationAsync_WithMissingEnvironmentVariable_LoadsLiteralValue()
     {
         // Arrange

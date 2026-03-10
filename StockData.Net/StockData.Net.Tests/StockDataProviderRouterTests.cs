@@ -412,6 +412,104 @@ public class StockDataProviderRouterTests
         fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [TestMethod]
+    public async Task GetStockInfoWithProviderAsync_WhenExplicitProviderSelected_UsesOnlyRequestedProvider()
+    {
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
+        fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback-result");
+
+        var result = await router.GetStockInfoWithProviderAsync("AAPL", "fallback_provider");
+
+        Assert.AreEqual("fallback-result", result.Result);
+        Assert.AreEqual("fallback_provider", result.ProviderId);
+        fallback.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        primary.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoWithProviderAsync_WhenExplicitProviderMissing_ThrowsInvalidOperationException()
+    {
+        var (router, _, _) = CreateStockInfoRouterWithFallback();
+
+        InvalidOperationException exception;
+        try
+        {
+            await router.GetStockInfoWithProviderAsync("AAPL", "unknown_provider");
+            Assert.Fail("Expected InvalidOperationException was not thrown.");
+            return;
+        }
+        catch (InvalidOperationException ex)
+        {
+            exception = ex;
+        }
+
+        Assert.Contains("not available", exception.Message);
+    }
+
+    [TestMethod]
+    public async Task ExecuteWithExplicitProviderAsync_WhenCircuitBreakerOpen_StillInvokesProvider()
+    {
+        var provider = new Mock<IStockDataProvider>();
+        provider.Setup(p => p.ProviderId).Returns("cb_provider");
+        provider.Setup(p => p.ProviderName).Returns("Circuit Breaker Provider");
+        provider.Setup(p => p.Version).Returns("1.0.0");
+        provider.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var config = new McpConfiguration
+        {
+            Version = "1.0",
+            Providers =
+            [
+                new ProviderConfiguration { Id = "cb_provider", Type = "Test", Enabled = true, Priority = 1, HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+            ],
+            Routing = new RoutingConfiguration
+            {
+                DefaultStrategy = "PrimaryWithFailover",
+                DataTypeRouting = new Dictionary<string, DataTypeRouting>
+                {
+                    ["StockInfo"] = new DataTypeRouting
+                    {
+                        PrimaryProviderId = "cb_provider",
+                        FallbackProviderIds = new List<string>(),
+                        TimeoutSeconds = 30
+                    }
+                }
+            },
+            CircuitBreaker = new CircuitBreakerConfiguration
+            {
+                Enabled = true,
+                FailureThreshold = 1,
+                HalfOpenAfterSeconds = 3600,
+                TimeoutSeconds = 30
+            }
+        };
+
+        var router = new StockDataProviderRouter(config, new[] { provider.Object });
+
+        // First request fails and opens the circuit breaker.
+        provider
+            .SetupSequence(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("simulated upstream failure"))
+            .ReturnsAsync("explicit-provider-success");
+
+        try
+        {
+            await router.GetStockInfoAsync("AAPL");
+            Assert.Fail("Expected ProviderFailoverException was not thrown.");
+        }
+        catch (ProviderFailoverException)
+        {
+            // Expected
+        }
+
+        // This explicit-provider request should bypass the circuit breaker and still invoke the provider.
+        var result = await router.GetStockInfoWithProviderAsync("AAPL", "cb_provider");
+
+        Assert.AreEqual("explicit-provider-success", result.Result);
+        Assert.AreEqual("cb_provider", result.ProviderId);
+        provider.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
     private static (StockDataProviderRouter Router, Mock<IStockDataProvider> Primary, Mock<IStockDataProvider> Fallback)
         CreateStockInfoRouterWithFallback()
     {

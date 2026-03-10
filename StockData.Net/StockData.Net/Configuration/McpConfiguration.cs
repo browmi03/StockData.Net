@@ -16,6 +16,11 @@ public class McpConfiguration
     public List<ProviderConfiguration> Providers { get; set; } = new();
 
     /// <summary>
+    /// Provider selection settings (aliases and per-data-type defaults)
+    /// </summary>
+    public ProviderSelectionConfiguration ProviderSelection { get; set; } = new();
+
+    /// <summary>
     /// Optional typed provider credential sections for external configuration systems.
     /// </summary>
     public ProviderCredentialsConfiguration ProviderCredentials { get; set; } = new();
@@ -82,6 +87,11 @@ public class ProviderConfiguration
     public int Priority { get; set; } = 1;
 
     /// <summary>
+    /// Commercial tier for metadata reporting
+    /// </summary>
+    public string Tier { get; set; } = "free";
+
+    /// <summary>
     /// Provider-specific settings (API keys, endpoints, etc.)
     /// </summary>
     public Dictionary<string, string> Settings { get; set; } = new();
@@ -100,6 +110,22 @@ public class ProviderConfiguration
     /// Health check configuration
     /// </summary>
     public HealthCheckConfiguration HealthCheck { get; set; } = new();
+}
+
+/// <summary>
+/// Provider selection aliases and defaults used by MCP handlers.
+/// </summary>
+public class ProviderSelectionConfiguration
+{
+    /// <summary>
+    /// Maps user-facing provider aliases to canonical provider IDs.
+    /// </summary>
+    public Dictionary<string, string> Aliases { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Optional default provider override per data type.
+    /// </summary>
+    public Dictionary<string, string?> DefaultProvider { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>

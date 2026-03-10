@@ -1,7 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 using StockData.Net;
+using StockData.Net.Configuration;
 using StockData.Net.Models;
 using StockData.Net.McpServer.Models;
 using StockData.Net.Providers;
@@ -17,13 +19,25 @@ namespace StockData.Net.McpServer;
 public class StockDataMcpServer
 {
     private readonly StockDataProviderRouter _router;
+    private readonly ProviderSelectionValidator _providerValidator;
+    private readonly ILogger<StockDataMcpServer>? _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private const string ServerName = "StockData-mcp";
     private const string ServerVersion = "1.0.0";
 
     public StockDataMcpServer(StockDataProviderRouter router)
+        : this(router, new ConfigurationLoader().GetDefaultConfiguration(), null)
+    {
+    }
+
+    public StockDataMcpServer(
+        StockDataProviderRouter router,
+        McpConfiguration configuration,
+        ILogger<StockDataMcpServer>? logger = null)
     {
         _router = router;
+        _providerValidator = new ProviderSelectionValidator(configuration, _router.GetRegisteredProviderIds());
+        _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -83,13 +97,21 @@ public class StockDataMcpServer
         }
         catch (Exception ex)
         {
+            var providerAware = ex as ProviderAwareException;
             return new McpResponse
             {
                 Id = request.Id,
                 Error = new McpError
                 {
                     Code = -32603,
-                    Message = SensitiveDataSanitizer.Sanitize(ex.Message)
+                    Message = SensitiveDataSanitizer.Sanitize(ex.Message),
+                    Data = providerAware == null
+                        ? null
+                        : new
+                        {
+                            serviceKey = _providerValidator.GetServiceKeyForProviderId(providerAware.ProviderId),
+                            tier = _providerValidator.GetTierForProviderId(providerAware.ProviderId)
+                        }
                 }
             };
         }
@@ -118,7 +140,7 @@ public class StockDataMcpServer
         {
             CreateToolDefinition(
                 "get_historical_stock_prices",
-                "Get historical stock prices for a given ticker symbol from yahoo finance. Include the following information: Date, Open, High, Low, Close, Volume, Adj Close.",
+                "Get historical stock prices for a given ticker symbol. Include Date, Open, High, Low, Close, Volume, Adj Close. Use provider when the user explicitly asks for a source (yahoo, alphavantage, finnhub).",
                 new
                 {
                     type = "object",
@@ -126,77 +148,86 @@ public class StockDataMcpServer
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get historical prices for, e.g. \"AAPL\"" },
                         period = new { type = "string", description = "Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max. Default is \"1mo\"", @default = "1mo" },
-                        interval = new { type = "string", description = "Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo. Default is \"1d\"", @default = "1d" }
+                        interval = new { type = "string", description = "Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo. Default is \"1d\"", @default = "1d" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_stock_info",
-                "Get stock information for a given ticker symbol from yahoo finance. Include the following information: Stock Price & Trading Info, Company Information, Financial Metrics, Earnings & Revenue, Margins & Returns, Dividends, Balance Sheet, Ownership, Analyst Coverage, Risk Metrics, Other.",
+                "Get stock information for a given ticker symbol. Include Stock Price & Trading Info, Company Information, Financial Metrics, and more. Use provider when the user explicitly asks for a source.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        ticker = new { type = "string", description = "The ticker symbol of the stock to get information for, e.g. \"AAPL\"" }
+                        ticker = new { type = "string", description = "The ticker symbol of the stock to get information for, e.g. \"AAPL\"" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_finance_news",
-                "Get news for a given ticker symbol using the configured finance data providers.",
+                "Get news for a given ticker symbol using configured finance data providers. Use provider when the user explicitly asks for a source.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        ticker = new { type = "string", description = "The ticker symbol of the stock to get news for, e.g. \"AAPL\"" }
+                        ticker = new { type = "string", description = "The ticker symbol of the stock to get news for, e.g. \"AAPL\"" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_market_news",
-                "Get general market news without requiring a specific ticker. Returns news with title, summary, publish time, URL, and related tickers.",
-                new
-                {
-                    type = "object",
-                    properties = new { }
-                }),
-            CreateToolDefinition(
-                "get_stock_actions",
-                "Get stock dividends and stock splits for a given ticker symbol from yahoo finance.",
+                "Get general market news without requiring a specific ticker. Returns title, summary, publish time, URL, and related tickers. Use provider when explicitly requested.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        ticker = new { type = "string", description = "The ticker symbol of the stock to get stock actions for, e.g. \"AAPL\"" }
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                    }
+                }),
+            CreateToolDefinition(
+                "get_stock_actions",
+                "Get stock dividends and stock splits for a given ticker symbol. Use provider when the user explicitly asks for a source.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        ticker = new { type = "string", description = "The ticker symbol of the stock to get stock actions for, e.g. \"AAPL\"" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_financial_statement",
-                "Get financial statement for a given ticker symbol from yahoo finance. You can choose from the following financial statement types: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow.",
+                "Get financial statements for a ticker symbol. financial_type: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow. Use provider when explicitly requested.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get financial statement for, e.g. \"AAPL\"" },
-                        financial_type = new { type = "string", description = "The type of financial statement to get. You can choose from the following financial statement types: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow." }
+                        financial_type = new { type = "string", description = "The type of financial statement to get. You can choose from the following financial statement types: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow." },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker", "financial_type" }
                 }),
             CreateToolDefinition(
                 "get_holder_info",
-                "Get holder information for a given ticker symbol from yahoo finance. You can choose from the following holder types: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders.",
+                "Get holder information for a ticker symbol. holder_type: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders. Use provider when explicitly requested.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get holder information for, e.g. \"AAPL\"" },
-                        holder_type = new { type = "string", description = "The type of holder information to get. You can choose from the following holder types: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders." }
+                        holder_type = new { type = "string", description = "The type of holder information to get. You can choose from the following holder types: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders." },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker", "holder_type" }
                 }),
@@ -208,7 +239,8 @@ public class StockDataMcpServer
                     type = "object",
                     properties = new
                     {
-                        ticker = new { type = "string", description = "The ticker symbol of the stock to get option expiration dates for, e.g. \"AAPL\"" }
+                        ticker = new { type = "string", description = "The ticker symbol of the stock to get option expiration dates for, e.g. \"AAPL\"" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker" }
                 }),
@@ -222,13 +254,14 @@ public class StockDataMcpServer
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get option chain for, e.g. \"AAPL\"" },
                         expiration_date = new { type = "string", description = "The expiration date for the options chain (format: 'YYYY-MM-DD')" },
-                        option_type = new { type = "string", description = "The type of option to fetch ('calls' or 'puts')" }
+                        option_type = new { type = "string", description = "The type of option to fetch ('calls' or 'puts')" },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker", "expiration_date", "option_type" }
                 }),
             CreateToolDefinition(
                 "get_recommendations",
-                "Get recommendations or upgrades/downgrades for a given ticker symbol from yahoo finance. You can also specify the number of months back to get upgrades/downgrades for, default is 12.",
+                "Get recommendations or upgrades/downgrades for a ticker symbol. months_back default is 12. Use provider when explicitly requested.",
                 new
                 {
                     type = "object",
@@ -236,7 +269,8 @@ public class StockDataMcpServer
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get recommendations for, e.g. \"AAPL\"" },
                         recommendation_type = new { type = "string", description = "The type of recommendation to get. You can choose from the following recommendation types: recommendations, upgrades_downgrades." },
-                        months_back = new { type = "integer", description = "The number of months back to get upgrades/downgrades for, default is 12.", @default = 12 }
+                        months_back = new { type = "integer", description = "The number of months back to get upgrades/downgrades for, default is 12.", @default = 12 },
+                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
                     },
                     required = new[] { "ticker", "recommendation_type" }
                 })
@@ -260,56 +294,104 @@ public class StockDataMcpServer
             throw new Exception("Missing tool name");
         }
 
-        var result = toolName switch
+        var requestedProvider = GetOptionalString(arguments, "provider", string.Empty);
+        var validation = _providerValidator.Validate(requestedProvider);
+        if (!validation.IsValid)
         {
-            "get_historical_stock_prices" => await _router.GetHistoricalPricesAsync(
-                GetRequiredString(arguments, "ticker"),
-                GetOptionalString(arguments, "period", "1mo"),
-                GetOptionalString(arguments, "interval", "1d"),
-                cancellationToken),
-            
-            "get_stock_info" => await _router.GetStockInfoAsync(
-                GetRequiredString(arguments, "ticker"),
-                cancellationToken),
-            
-            "get_finance_news" => await _router.GetNewsAsync(
-                GetRequiredString(arguments, "ticker"),
-                cancellationToken),
-            
-            "get_market_news" => await _router.GetMarketNewsAsync(cancellationToken),
-            
-            "get_stock_actions" => await _router.GetStockActionsAsync(
-                GetRequiredString(arguments, "ticker"),
-                cancellationToken),
-            
-            "get_financial_statement" => await _router.GetFinancialStatementAsync(
-                GetRequiredString(arguments, "ticker"),
-                ParseFinancialType(GetRequiredString(arguments, "financial_type")),
-                cancellationToken),
-            
-            "get_holder_info" => await _router.GetHolderInfoAsync(
-                GetRequiredString(arguments, "ticker"),
-                ParseHolderType(GetRequiredString(arguments, "holder_type")),
-                cancellationToken),
-            
-            "get_option_expiration_dates" => await _router.GetOptionExpirationDatesAsync(
-                GetRequiredString(arguments, "ticker"),
-                cancellationToken),
-            
-            "get_option_chain" => await _router.GetOptionChainAsync(
-                GetRequiredString(arguments, "ticker"),
-                GetRequiredString(arguments, "expiration_date"),
-                ParseOptionType(GetRequiredString(arguments, "option_type")),
-                cancellationToken),
-            
-            "get_recommendations" => await _router.GetRecommendationsAsync(
-                GetRequiredString(arguments, "ticker"),
-                ParseRecommendationType(GetRequiredString(arguments, "recommendation_type")),
-                GetOptionalInt(arguments, "months_back", 12),
-                cancellationToken),
-            
-            _ => throw new Exception($"Unknown tool: {toolName}")
-        };
+            throw new Exception(validation.ErrorMessage ?? "Provider selection is invalid.");
+        }
+
+        var selectionMode = validation.IsExplicitSelection ? "explicit" : "default";
+        _logger?.LogInformation(
+            "Provider selection audit: tool={ToolName} method={SelectionMode} requestedProvider={RequestedProvider} resolvedProvider={ResolvedProvider}",
+            toolName,
+            selectionMode,
+            string.IsNullOrWhiteSpace(requestedProvider) ? "<none>" : requestedProvider,
+            validation.ResolvedProviderId ?? "<router>");
+
+        var explicitProviderId = validation.IsExplicitSelection
+            ? validation.ResolvedProviderId
+            : _providerValidator.ResolveDefaultProviderForDataType(MapToolToDataType(toolName));
+
+        ProviderResult result;
+
+        try
+        {
+            result = toolName switch
+            {
+                "get_historical_stock_prices" => await _router.GetHistoricalPricesWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    GetOptionalString(arguments, "period", "1mo"),
+                    GetOptionalString(arguments, "interval", "1d"),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_stock_info" => await _router.GetStockInfoWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_finance_news" => await _router.GetNewsWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_market_news" => await _router.GetMarketNewsWithProviderAsync(
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_stock_actions" => await _router.GetStockActionsWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_financial_statement" => await _router.GetFinancialStatementWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    ParseFinancialType(GetRequiredString(arguments, "financial_type")),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_holder_info" => await _router.GetHolderInfoWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    ParseHolderType(GetRequiredString(arguments, "holder_type")),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_option_expiration_dates" => await _router.GetOptionExpirationDatesWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_option_chain" => await _router.GetOptionChainWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    GetRequiredString(arguments, "expiration_date"),
+                    ParseOptionType(GetRequiredString(arguments, "option_type")),
+                    explicitProviderId,
+                    cancellationToken),
+
+                "get_recommendations" => await _router.GetRecommendationsWithProviderAsync(
+                    GetRequiredString(arguments, "ticker"),
+                    ParseRecommendationType(GetRequiredString(arguments, "recommendation_type")),
+                    GetOptionalInt(arguments, "months_back", 12),
+                    explicitProviderId,
+                    cancellationToken),
+
+                _ => throw new Exception($"Unknown tool: {toolName}")
+            };
+        }
+        catch (Exception ex)
+        {
+            var providerId = validation.ResolvedProviderId;
+            if (!string.IsNullOrWhiteSpace(providerId))
+            {
+                throw new ProviderAwareException(providerId, ex.Message, ex);
+            }
+
+            throw;
+        }
+
+        var serviceKey = _providerValidator.GetServiceKeyForProviderId(result.ProviderId);
+        var tier = _providerValidator.GetTierForProviderId(result.ProviderId);
 
         return new
         {
@@ -318,8 +400,13 @@ public class StockDataMcpServer
                 new
                 {
                     type = "text",
-                    text = result
+                    text = result.Result
                 }
+            },
+            _meta = new
+            {
+                serviceKey,
+                tier
             }
         };
     }
@@ -360,6 +447,24 @@ public class StockDataMcpServer
             return value.GetInt32();
         }
         return defaultValue;
+    }
+
+    private static string MapToolToDataType(string toolName)
+    {
+        return toolName switch
+        {
+            "get_historical_stock_prices" => "HistoricalPrices",
+            "get_stock_info" => "StockInfo",
+            "get_finance_news" => "News",
+            "get_market_news" => "MarketNews",
+            "get_stock_actions" => "StockActions",
+            "get_financial_statement" => "FinancialStatement",
+            "get_holder_info" => "HolderInfo",
+            "get_option_expiration_dates" => "OptionExpirationDates",
+            "get_option_chain" => "OptionChain",
+            "get_recommendations" => "Recommendations",
+            _ => "StockInfo"
+        };
     }
 
     private static FinancialStatementType ParseFinancialType(string type)
@@ -408,5 +513,16 @@ public class StockDataMcpServer
             "upgrades_downgrades" => RecommendationType.UpgradesDowngrades,
             _ => throw new Exception($"Invalid recommendation type: {type}")
         };
+    }
+}
+
+internal sealed class ProviderAwareException : Exception
+{
+    public string ProviderId { get; }
+
+    public ProviderAwareException(string providerId, string message, Exception? innerException = null)
+        : base(message, innerException)
+    {
+        ProviderId = providerId;
     }
 }
