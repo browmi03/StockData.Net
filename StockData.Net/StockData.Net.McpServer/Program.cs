@@ -9,6 +9,11 @@ using StockData.Net.McpServer;
 using StockData.Net.Providers;
 using StockData.Net.Security;
 
+// Load .env file before reading configuration so ${VAR} placeholders resolve correctly.
+// TraversePath() walks up from the binary directory looking for a .env file;
+// it is a no-op when no file is found. OS environment variables are not overwritten.
+DotNetEnv.Env.TraversePath().Load();
+
 var builder = Host.CreateApplicationBuilder(args);
 
 // Load configuration
