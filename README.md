@@ -154,6 +154,29 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 ---
 
+### Recommended: appsettings.local.json for Local Deployment
+
+> **Important:** Never put real API keys in `appsettings.json` — this file is tracked in git. Instead, create `appsettings.local.json` alongside the binary. This file is automatically gitignored and overrides `appsettings.json` at runtime.
+
+Create `appsettings.local.json` in the same directory as the server binary (e.g., `C:\Tools\StockData.Net\appsettings.local.json`) with your real credentials:
+
+```json
+{
+  "providerCredentials": {
+    "finnhub": {
+      "apiKey": "your-finnhub-key-here"
+    },
+    "alphavantage": {
+      "apiKey": "your-alphavantage-key-here"
+    }
+  }
+}
+```
+
+The provider-specific sections below show all available configuration structures (Options 1–3). Place whichever you use in `appsettings.local.json`, not `appsettings.json`.
+
+---
+
 ### Provider Details and Registration
 
 #### Yahoo Finance (Built-in Provider)
@@ -182,13 +205,15 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 **Configuration:**
 
-**Configuration (Local appsettings.json):**
+Add your Finnhub API key to your `appsettings.local.json` using one of these three methods (these are partial snippets — your file may also include a `providers` array):
 
-Edit `C:\Tools\StockData.Net\appsettings.json` and set:
+**Option 1 - providerCredentials section (Recommended):**
+
+Add this to your `appsettings.local.json`. This is a partial snippet — it will be merged with your existing provider configuration at runtime:
 
 ```json
 {
-  "providers": {
+  "providerCredentials": {
     "finnhub": {
       "apiKey": "your_actual_finnhub_api_key_here"
     }
@@ -196,18 +221,55 @@ Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 }
 ```
 
-Ensure the provider is enabled in `appsettings.json`:
+**Option 2 - Inline in provider settings:**
 
+Add the API key directly in the provider's `settings` block within the `providers` array:
 
 ```json
 {
-  "id": "finnhub",
-  "enabled": true,
-  "priority": 2,
-  "capabilities": ["StockPrice", "HistoricalData", "Quote"],
-  "rateLimit": {
-    "requestsPerMinute": 60
-  }
+  "providers": [
+    {
+      "id": "finnhub",
+      "type": "FinnhubProvider",
+      "enabled": true,
+      "priority": 2,
+      "tier": "free",
+      "settings": {
+        "apiKey": "your_actual_finnhub_api_key_here",
+        "baseUrl": "https://finnhub.io/api/v1"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 60
+      }
+    }
+  ]
+}
+```
+
+**Option 3 - Environment variable:**
+
+Use an environment variable placeholder in `settings.apiKey`, then set the `FINNHUB_API_KEY` environment variable on your system. The full provider entry goes in the `providers` array:
+
+```json
+{
+  "providers": [
+    {
+      "id": "finnhub",
+      "type": "FinnhubProvider",
+      "enabled": true,
+      "priority": 2,
+      "tier": "free",
+      "settings": {
+        "apiKey": "${FINNHUB_API_KEY}",
+        "baseUrl": "https://finnhub.io/api/v1"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 60
+      }
+    }
+  ]
 }
 ```
 
@@ -230,13 +292,15 @@ Ensure the provider is enabled in `appsettings.json`:
 
 **Configuration:**
 
-**Configuration (Local appsettings.json):**
+Add your Alpha Vantage API key to your `appsettings.local.json` using one of these three methods (these are partial snippets — your file may also include a `providers` array):
 
-Edit `C:\Tools\StockData.Net\appsettings.json` and set:
+**Option 1 - providerCredentials section (Recommended):**
+
+Add this to your `appsettings.local.json`. This is a partial snippet — it will be merged with your existing provider configuration at runtime:
 
 ```json
 {
-  "providers": {
+  "providerCredentials": {
     "alphavantage": {
       "apiKey": "your_actual_alphavantage_api_key_here"
     }
@@ -244,18 +308,55 @@ Edit `C:\Tools\StockData.Net\appsettings.json` and set:
 }
 ```
 
-Ensure the provider is enabled in `appsettings.json`:
+**Option 2 - Inline in provider settings:**
 
+Add the API key directly in the provider's `settings` block within the `providers` array:
 
 ```json
 {
-  "id": "alphavantage",
-  "enabled": true,
-  "priority": 4,
-  "capabilities": ["HistoricalData", "StockPrice"],
-  "rateLimit": {
-    "requestsPerMinute": 5
-  }
+  "providers": [
+    {
+      "id": "alphavantage",
+      "type": "AlphaVantageProvider",
+      "enabled": true,
+      "priority": 3,
+      "tier": "free",
+      "settings": {
+        "apiKey": "your_actual_alphavantage_api_key_here",
+        "baseUrl": "https://www.alphavantage.co"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 5
+      }
+    }
+  ]
+}
+```
+
+**Option 3 - Environment variable:**
+
+Use an environment variable placeholder in `settings.apiKey`, then set the `ALPHAVANTAGE_API_KEY` environment variable on your system. The full provider entry goes in the `providers` array:
+
+```json
+{
+  "providers": [
+    {
+      "id": "alphavantage",
+      "type": "AlphaVantageProvider",
+      "enabled": true,
+      "priority": 3,
+      "tier": "free",
+      "settings": {
+        "apiKey": "${ALPHAVANTAGE_API_KEY}",
+        "baseUrl": "https://www.alphavantage.co"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 5
+      }
+    }
+  ]
 }
 ```
 
@@ -335,22 +436,22 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 **For Local Deployment (C:\Tools\StockData.Net\):**
 
-Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys:
+Create `C:\Tools\StockData.Net\appsettings.local.json` with your API keys (this file is gitignored and overrides `appsettings.json` at runtime):
 
 ```json
 {
-  "providers": {
+  "providerCredentials": {
     "finnhub": {
-      "apiKey": "your_finnhub_key"
+      "apiKey": "your-finnhub-key-here"
     },
     "alphavantage": {
-      "apiKey": "your_alphavantage_key"
+      "apiKey": "your-alphavantage-key-here"
     }
   }
 }
 ```
 
-**Note:** Replace `"your_*_key"` with your actual API keys. For paid tiers, lock down file permissions on `appsettings.json` and avoid storing the file in cloud-synced folders.
+**Note:** `appsettings.local.json` is automatically gitignored — never put real API keys in `appsettings.json` (tracked in git). See the provider-specific sections above for alternative configuration methods (inline settings or environment variables). For paid tiers, lock down file permissions on `appsettings.local.json` and avoid storing the file in cloud-synced folders.
 
 ---
 
