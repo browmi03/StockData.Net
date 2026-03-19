@@ -121,6 +121,12 @@ public class FinnhubIntegrationTests
 
     private static string? ResolveApiKey()
     {
+        var envKey = Environment.GetEnvironmentVariable("FINNHUB_API_KEY");
+        if (!string.IsNullOrWhiteSpace(envKey))
+        {
+            return envKey;
+        }
+
         var builder = new ConfigurationBuilder()
             .AddUserSecrets<FinnhubIntegrationTests>(optional: true);
 
