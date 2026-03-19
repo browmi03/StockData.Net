@@ -122,6 +122,12 @@ public class AlphaVantageIntegrationTests
 
     private static string? ResolveApiKey()
     {
+        var envKey = Environment.GetEnvironmentVariable("ALPHAVANTAGE_API_KEY");
+        if (!string.IsNullOrWhiteSpace(envKey))
+        {
+            return envKey;
+        }
+
         var builder = new ConfigurationBuilder()
             .AddUserSecrets<AlphaVantageIntegrationTests>(optional: true);
 
