@@ -154,6 +154,29 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 ---
 
+### Recommended: appsettings.local.json for Local Deployment
+
+> **Important:** Never put real API keys in `appsettings.json` — this file is tracked in git. Instead, create `appsettings.local.json` alongside the binary. This file is automatically gitignored and overrides `appsettings.json` at runtime.
+
+Create `appsettings.local.json` in the same directory as the server binary (e.g., `C:\Tools\StockData.Net\appsettings.local.json`) with your real credentials:
+
+```json
+{
+  "providerCredentials": {
+    "finnhub": {
+      "apiKey": "your-finnhub-key-here"
+    },
+    "alphavantage": {
+      "apiKey": "your-alphavantage-key-here"
+    }
+  }
+}
+```
+
+The provider-specific sections below show all available configuration structures (Options 1–3). Place whichever you use in `appsettings.local.json`, not `appsettings.json`.
+
+---
+
 ### Provider Details and Registration
 
 #### Yahoo Finance (Built-in Provider)
@@ -393,22 +416,22 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 
 **For Local Deployment (C:\Tools\StockData.Net\):**
 
-Edit `C:\Tools\StockData.Net\appsettings.json` with your API keys using the **providerCredentials** section (recommended):
+Create `C:\Tools\StockData.Net\appsettings.local.json` with your API keys (this file is gitignored and overrides `appsettings.json` at runtime):
 
 ```json
 {
   "providerCredentials": {
     "finnhub": {
-      "apiKey": "your_finnhub_key"
+      "apiKey": "your-finnhub-key-here"
     },
     "alphavantage": {
-      "apiKey": "your_alphavantage_key"
+      "apiKey": "your-alphavantage-key-here"
     }
   }
 }
 ```
 
-**Note:** Replace `"your_*_key"` with your actual API keys. See the provider-specific sections above for alternative configuration methods (inline settings or environment variables). For paid tiers, lock down file permissions on `appsettings.json` and avoid storing the file in cloud-synced folders.
+**Note:** `appsettings.local.json` is automatically gitignored — never put real API keys in `appsettings.json` (tracked in git). See the provider-specific sections above for alternative configuration methods (inline settings or environment variables). For paid tiers, lock down file permissions on `appsettings.local.json` and avoid storing the file in cloud-synced folders.
 
 ---
 
