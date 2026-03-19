@@ -205,11 +205,11 @@ The provider-specific sections below show all available configuration structures
 
 **Configuration:**
 
-Edit `C:\Tools\StockData.Net\appsettings.json` and add your API key using one of these three methods:
+Add your Finnhub API key to your `appsettings.local.json` using one of these three methods (these are partial snippets — your file may also include a `providers` array):
 
 **Option 1 - providerCredentials section (Recommended):**
 
-This is the cleanest approach, separating credentials from provider configuration:
+Add this to your `appsettings.local.json`. This is a partial snippet — it will be merged with your existing provider configuration at runtime:
 
 ```json
 {
@@ -239,6 +239,7 @@ Add the API key directly in the provider's `settings` block within the `provider
         "baseUrl": "https://finnhub.io/api/v1"
       },
       "rateLimit": {
+        "enabled": true,
         "requestsPerMinute": 60
       }
     }
@@ -248,15 +249,24 @@ Add the API key directly in the provider's `settings` block within the `provider
 
 **Option 3 - Environment variable:**
 
-Use an environment variable placeholder in settings, then set the `FINNHUB_API_KEY` environment variable on your system:
+Use an environment variable placeholder in `settings.apiKey`, then set the `FINNHUB_API_KEY` environment variable on your system. The full provider entry goes in the `providers` array:
 
 ```json
 {
   "providers": [
     {
       "id": "finnhub",
+      "type": "FinnhubProvider",
+      "enabled": true,
+      "priority": 2,
+      "tier": "free",
       "settings": {
-        "apiKey": "${FINNHUB_API_KEY}"
+        "apiKey": "${FINNHUB_API_KEY}",
+        "baseUrl": "https://finnhub.io/api/v1"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 60
       }
     }
   ]
@@ -282,11 +292,11 @@ Use an environment variable placeholder in settings, then set the `FINNHUB_API_K
 
 **Configuration:**
 
-Edit `C:\Tools\StockData.Net\appsettings.json` and add your API key using one of these three methods:
+Add your Alpha Vantage API key to your `appsettings.local.json` using one of these three methods (these are partial snippets — your file may also include a `providers` array):
 
 **Option 1 - providerCredentials section (Recommended):**
 
-This is the cleanest approach, separating credentials from provider configuration:
+Add this to your `appsettings.local.json`. This is a partial snippet — it will be merged with your existing provider configuration at runtime:
 
 ```json
 {
@@ -316,6 +326,7 @@ Add the API key directly in the provider's `settings` block within the `provider
         "baseUrl": "https://www.alphavantage.co"
       },
       "rateLimit": {
+        "enabled": true,
         "requestsPerMinute": 5
       }
     }
@@ -325,15 +336,24 @@ Add the API key directly in the provider's `settings` block within the `provider
 
 **Option 3 - Environment variable:**
 
-Use an environment variable placeholder in settings, then set the `ALPHAVANTAGE_API_KEY` environment variable on your system:
+Use an environment variable placeholder in `settings.apiKey`, then set the `ALPHAVANTAGE_API_KEY` environment variable on your system. The full provider entry goes in the `providers` array:
 
 ```json
 {
   "providers": [
     {
       "id": "alphavantage",
+      "type": "AlphaVantageProvider",
+      "enabled": true,
+      "priority": 3,
+      "tier": "free",
       "settings": {
-        "apiKey": "${ALPHAVANTAGE_API_KEY}"
+        "apiKey": "${ALPHAVANTAGE_API_KEY}",
+        "baseUrl": "https://www.alphavantage.co"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 5
       }
     }
   ]

@@ -14,23 +14,23 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Check for agent files
-      run: |
-        if find . -path './.github/agents/*' -not -path './.git/*' | grep -q .; then
-          echo "ERROR: .github/agents/ files were committed. These are local-only and must never be pushed."
-          find . -path './.github/agents/*' -not -path './.git/*'
-          exit 1
-        fi
-        echo "OK: No agent files found."
+      - name: Check for agent files
+        run: |
+          if find . -path './.github/agents/*' -not -path './.git/*' | grep -q .; then
+            echo "ERROR: .github/agents/ files were committed. These are local-only and must never be pushed."
+            find . -path './.github/agents/*' -not -path './.git/*'
+            exit 1
+          fi
+          echo "OK: No agent files found."
 
-    - name: Check for secrets files
-      run: |
-        if find . \( -name 'secrets.json' -o -name '*.secrets.json' \) -not -path './.git/*' | grep -q .; then
-          echo "ERROR: A secrets file was committed. These are local-only and must never be pushed."
-          find . \( -name 'secrets.json' -o -name '*.secrets.json' \) -not -path './.git/*'
-          exit 1
-        fi
-        echo "OK: No secrets files found."
+      - name: Check for secrets files
+        run: |
+          if find . \( -name 'secrets.json' -o -name '*.secrets.json' \) -not -path './.git/*' | grep -q .; then
+            echo "ERROR: A secrets file was committed. These are local-only and must never be pushed."
+            find . \( -name 'secrets.json' -o -name '*.secrets.json' \) -not -path './.git/*'
+            exit 1
+          fi
+          echo "OK: No secrets files found."
