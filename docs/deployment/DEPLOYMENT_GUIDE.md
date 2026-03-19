@@ -270,6 +270,40 @@ After completing deployment, verify:
 
 ---
 
+## Secret Management in CI/CD
+
+CI/CD pipelines (GitHub Actions, Azure DevOps, etc.) must inject API keys as **native pipeline secrets mapped to environment variables** — never via a `.env` file.
+
+### Required Environment Variables
+
+| Variable | Description |
+| --- | --- |
+| `FINNHUB_API_KEY` | Finnhub API key for real-time stock data |
+| `ALPHAVANTAGE_API_KEY` | Alpha Vantage API key for historical data |
+| `YAHOO_FINANCE_API_KEY` | Yahoo Finance key (leave empty — no key required) |
+
+### GitHub Actions
+
+Define secrets in **Settings → Secrets and variables → Actions**, then map them in your workflow:
+
+```yaml
+env:
+  FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+  ALPHAVANTAGE_API_KEY: ${{ secrets.ALPHAVANTAGE_API_KEY }}
+```
+
+### Azure DevOps / Azure Key Vault
+
+Link Key Vault secrets as pipeline variables and expose them as environment variables in the pipeline definition. Refer to your pipeline platform's documentation for the exact syntax.
+
+### Important Rules
+
+- **Do NOT deploy a `.env` file** — the `.env` file is for local developer use only. Pipelines must never package or copy a `.env` file into a build artifact or deployment target.
+- **Pipeline env vars always win** — `DotNetEnv` is configured with `Env.TraversePath()` and does **not** override existing environment variables. Any key already set in the OS environment or pipeline takes precedence over values in a `.env` file, so injected CI/CD secrets are always authoritative.
+- **Use secret scanning** — enable GitHub's secret scanning and push protection to prevent accidental credential commits.
+
+---
+
 ## Related Documents
 
 - [Release Checklist](./RELEASE_CHECKLIST.md) — Release validation procedures

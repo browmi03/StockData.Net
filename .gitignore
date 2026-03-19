@@ -7,6 +7,9 @@ TestResults/
 # Local secrets (API keys)
 secrets.json
 *.secrets.json
+.env
+.env.*
+!.env.example
 
 # Local config overrides with real credentials (never commit)
 appsettings.local.json
