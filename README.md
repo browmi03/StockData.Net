@@ -154,6 +154,51 @@ Each provider can be independently enabled/disabled and configured with its own 
 
 ---
 
+### Local Developer Setup (.env File)
+
+For local development, the recommended way to configure API keys is via a `.env` file at the repository root.
+
+**Steps:**
+
+1. **Copy `.env.example` to `.env`:**
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. **Edit `.env`** and replace the placeholder values with your real API keys.
+
+3. **Restrict file permissions** so only your account can read the file:
+   - **Windows:**
+     ```powershell
+     icacls .env /inheritance:r /grant:r "%USERNAME%:RW"
+     ```
+   - **Linux / macOS:**
+     ```bash
+     chmod 600 .env
+     ```
+
+4. **Never commit `.env`** — it is excluded by `.gitignore`. The `.env.example` file (placeholder values only) is safe to commit and is tracked in git.
+
+The application loads `.env` automatically at startup using `DotNetEnv.Env.TraversePath()`, which walks upward from the binary directory looking for a `.env` file. Placing `.env` at the **repository root** is the recommended location.
+
+> **TraversePath() behavior:** The traversal walks upward from the binary's directory through all ancestor directories. A `.env` file in a parent or grandparent directory will be picked up automatically. In shared or multi-service environments, ensure each service's `.env` is not placed in a shared ancestor path that might be read by unintended services.
+
+---
+
+### Configuration Precedence
+
+Keys are loaded in the following order, with higher-priority sources overriding lower-priority ones:
+
+| Priority | Source | Notes |
+| --- | --- | --- |
+| 1 (highest) | OS / shell environment variables | Used by CI/CD pipelines |
+| 2 | `.env` file values | Local developer use only |
+| 3 (lowest) | `appsettings.json` literal values | Committed defaults and placeholders |
+
+`DotNetEnv` does **not** override existing environment variables, so values already set in the OS or pipeline always win.
+
+---
+
 ### Recommended: appsettings.local.json for Local Deployment
 
 > **Important:** Never put real API keys in `appsettings.json` — this file is tracked in git. Instead, create `appsettings.local.json` alongside the binary. This file is automatically gitignored and overrides `appsettings.json` at runtime.
