@@ -80,7 +80,7 @@ static void RegisterFinnhubProvider(IServiceCollection services, McpConfiguratio
     var apiKey = ResolveProviderApiKey(providerConfig, "FINNHUB_API_KEY");
     if (string.IsNullOrWhiteSpace(apiKey))
     {
-        Console.WriteLine("[Startup] Finnhub provider is enabled but API key is missing. Skipping registration.");
+        Console.Error.WriteLine("[Startup] Finnhub provider is enabled but API key is missing. Skipping registration.");
         return;
     }
 
@@ -105,7 +105,7 @@ static void RegisterAlphaVantageProvider(IServiceCollection services, McpConfigu
     var apiKey = ResolveProviderApiKey(providerConfig, "ALPHAVANTAGE_API_KEY");
     if (string.IsNullOrWhiteSpace(apiKey))
     {
-        Console.WriteLine("[Startup] AlphaVantage provider is enabled but API key is missing. Skipping registration.");
+        Console.Error.WriteLine("[Startup] AlphaVantage provider is enabled but API key is missing. Skipping registration.");
         return;
     }
 
