@@ -4,6 +4,12 @@ TestResults/
 # GitHub agents
 .github/agents/
 
+# Agent reference documentation (read-only reference)
+docs/templates/
+docs/coding-standards/
+docs/Git-Basic-Workflow.md
+docs/documentation-content-policy.md
+
 # Local secrets (API keys)
 secrets.json
 *.secrets.json
@@ -14,3 +20,6 @@ secrets.json
 # Local config overrides with real credentials (never commit)
 appsettings.local.json
 appsettings.*.local.json
+
+
+
