@@ -83,18 +83,13 @@ public class StockDataProviderRouterTests
     }
 
     [TestMethod]
-    public void Constructor_WithEmptyProviders_ThrowsArgumentException()
+    public void Constructor_WithEmptyProviders_CreatesRouterSuccessfully()
     {
-        // Act & Assert
-        try
-        {
-            _ = new StockDataProviderRouter(_config, Enumerable.Empty<IStockDataProvider>());
-            Assert.Fail("Expected ArgumentException was not thrown");
-        }
-        catch (ArgumentException)
-        {
-            // Expected exception
-        }
+        // Act
+        var router = new StockDataProviderRouter(_config, Enumerable.Empty<IStockDataProvider>());
+
+        // Assert
+        Assert.IsNotNull(router);
     }
 
     [TestMethod]

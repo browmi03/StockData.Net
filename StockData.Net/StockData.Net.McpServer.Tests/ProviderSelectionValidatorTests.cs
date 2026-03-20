@@ -42,7 +42,7 @@ public class ProviderSelectionValidatorTests
 
         Assert.IsFalse(result.IsValid);
         Assert.IsNotNull(result.ErrorMessage);
-        Assert.Contains("not currently available", result.ErrorMessage);
+        StringAssert.Contains(result.ErrorMessage, "not currently available");
     }
 
     [TestMethod]
@@ -56,5 +56,40 @@ public class ProviderSelectionValidatorTests
         var provider = validator.ResolveDefaultProviderForDataType("StockInfo");
 
         Assert.AreEqual("finnhub", provider);
+    }
+
+    [TestMethod]
+    public void GetAvailableProviders_AllProviders_ReturnsList()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "alphavantage", "finnhub" });
+
+        var providers = validator.GetAvailableProviders();
+
+        Assert.HasCount(3, providers);
+    }
+
+    [TestMethod]
+    public void GetAvailableProviders_MissingProvider_IsExcluded()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "alphavantage" });
+
+        var providers = validator.GetAvailableProviders();
+
+        Assert.HasCount(2, providers);
+        Assert.IsFalse(providers.Any(provider => string.Equals(provider.Id, "finnhub", StringComparison.OrdinalIgnoreCase)));
+    }
+
+    [TestMethod]
+    public void GetAvailableProviders_NoProviders_ReturnsEmpty()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var validator = new ProviderSelectionValidator(config, Array.Empty<string>());
+
+        var providers = validator.GetAvailableProviders();
+
+        Assert.IsNotNull(providers);
+        Assert.IsEmpty(providers);
     }
 }

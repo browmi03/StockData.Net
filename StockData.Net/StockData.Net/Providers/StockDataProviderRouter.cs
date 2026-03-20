@@ -36,11 +36,6 @@ public class StockDataProviderRouter
         _newsDeduplicator = newsDeduplicator ?? new NewsDeduplicator();
         _symbolTranslator = symbolTranslator;
 
-        if (_providers.Count == 0)
-        {
-            throw new ArgumentException("At least one provider must be registered", nameof(providers));
-        }
-
         // Initialize circuit breakers for each provider (without logging for now)
         _circuitBreakers = new Dictionary<string, CircuitBreaker>();
         foreach (var providerId in _providers.Keys)

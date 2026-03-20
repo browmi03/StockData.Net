@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using StockData.Net.Configuration;
+using StockData.Net.McpServer.Models;
 
 namespace StockData.Net.McpServer;
 
@@ -7,6 +8,46 @@ public sealed class ProviderSelectionValidator
 {
     private static readonly Regex AllowedProviderPattern =
         new("^[a-zA-Z0-9_ ]{1,50}$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(50));
+
+    private static readonly Dictionary<string, (string CanonicalId, string DisplayName, string[] SupportedDataTypes)> ProviderMetadata =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["yahoo_finance"] = (
+                "yahoo",
+                "Yahoo Finance",
+                new[]
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "stock_actions",
+                    "financial_statement",
+                    "holder_info",
+                    "option_expiration_dates",
+                    "option_chain",
+                    "recommendations"
+                }),
+            ["alphavantage"] = (
+                "alphavantage",
+                "Alpha Vantage",
+                new[]
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news"
+                }),
+            ["finnhub"] = (
+                "finnhub",
+                "Finnhub",
+                new[]
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news"
+                })
+        };
 
     private readonly McpConfiguration _configuration;
     private readonly HashSet<string> _registeredProviders;
@@ -91,6 +132,42 @@ public sealed class ProviderSelectionValidator
         }
 
         return "yahoo_finance";
+    }
+
+    public IReadOnlyList<ProviderInfo> GetAvailableProviders()
+    {
+        if (_registeredProviders.Count == 0)
+        {
+            return Array.Empty<ProviderInfo>();
+        }
+
+        var providers = _registeredProviders
+            .Select(providerId =>
+            {
+                var metadata = ProviderMetadata.TryGetValue(providerId, out var providerMetadata)
+                    ? providerMetadata
+                    : (CanonicalId: providerId, DisplayName: providerId, SupportedDataTypes: Array.Empty<string>());
+
+                var aliases = _aliases
+                    .Where(kvp => string.Equals(kvp.Value, providerId, StringComparison.OrdinalIgnoreCase))
+                    .Select(kvp => kvp.Key)
+                    .Where(alias => !alias.Contains(' '))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(alias => alias, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                return new ProviderInfo
+                {
+                    Id = metadata.CanonicalId,
+                    DisplayName = metadata.DisplayName,
+                    Aliases = aliases,
+                    SupportedDataTypes = metadata.SupportedDataTypes
+                };
+            })
+            .OrderBy(provider => provider.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return providers;
     }
 
     private List<string> GetSupportedServiceKeys()

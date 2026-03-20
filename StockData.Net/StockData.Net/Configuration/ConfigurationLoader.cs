@@ -192,9 +192,13 @@ public class ConfigurationLoader : IConfigurationLoader
                 {
                     ["yahoo"] = "yahoo_finance",
                     ["yahoo finance"] = "yahoo_finance",
+                    ["yfinance"] = "yahoo_finance",
                     ["alphavantage"] = "alphavantage",
+                    ["alpha_vantage"] = "alphavantage",
                     ["alpha vantage"] = "alphavantage",
-                    ["finnhub"] = "finnhub"
+                    ["av"] = "alphavantage",
+                    ["finnhub"] = "finnhub",
+                    ["fh"] = "finnhub"
                 },
                 DefaultProvider = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {

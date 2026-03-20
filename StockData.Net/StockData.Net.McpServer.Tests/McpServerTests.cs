@@ -64,12 +64,12 @@ public class StockDataMcpServerTests
         
         var resultJson = JsonSerializer.Serialize(response.Result);
         // Protocol version should match the MCP specification date format "YYYY-MM-DD"
-        Assert.Contains("protocolVersion", resultJson);
-        Assert.Contains("StockData-mcp", resultJson);
+        StringAssert.Contains(resultJson, "protocolVersion");
+        StringAssert.Contains(resultJson, "StockData-mcp");
     }
 
     [TestMethod]
-    public async Task HandleRequestAsync_ToolsList_ReturnsAll10Tools()
+    public async Task HandleRequestAsync_ToolsList_ReturnsAll11Tools()
     {
         // Arrange
         var request = new McpRequest
@@ -88,17 +88,309 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response.Result);
         
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("get_historical_stock_prices", resultJson);
-        Assert.Contains("get_stock_info", resultJson);
-        Assert.Contains("get_finance_news", resultJson);
-        Assert.Contains("get_market_news", resultJson);
-        Assert.Contains("get_stock_actions", resultJson);
-        Assert.Contains("get_financial_statement", resultJson);
-        Assert.Contains("get_holder_info", resultJson);
-        Assert.Contains("get_option_expiration_dates", resultJson);
-        Assert.Contains("get_option_chain", resultJson);
-        Assert.Contains("get_recommendations", resultJson);
+        StringAssert.Contains(resultJson, "get_historical_stock_prices");
+        StringAssert.Contains(resultJson, "get_stock_info");
+        StringAssert.Contains(resultJson, "get_finance_news");
+        StringAssert.Contains(resultJson, "get_market_news");
+        StringAssert.Contains(resultJson, "get_stock_actions");
+        StringAssert.Contains(resultJson, "get_financial_statement");
+        StringAssert.Contains(resultJson, "get_holder_info");
+        StringAssert.Contains(resultJson, "get_option_expiration_dates");
+        StringAssert.Contains(resultJson, "get_option_chain");
+        StringAssert.Contains(resultJson, "get_recommendations");
+        StringAssert.Contains(resultJson, "list_providers");
         Assert.DoesNotContain("get_yahoo_finance_news", resultJson);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_ToolRegistered()
+    {
+        var request = new McpRequest
+        {
+            Id = 203,
+            Method = "tools/list"
+        };
+
+        var response = await InvokeHandleRequestAsync(request);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+
+        var resultJson = JsonSerializer.Serialize(response.Result);
+        StringAssert.Contains(resultJson, "list_providers");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_AllProviders_ReturnsThree()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+
+        Assert.AreEqual(3, providers.GetArrayLength());
+    }
+
+    [TestMethod]
+    public async Task ListProviders_PartialProviders_ReturnsTwoProviders()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response).EnumerateArray().ToList();
+
+        Assert.HasCount(2, providers);
+
+        var providerIds = providers
+            .Select(provider => provider.GetProperty("id").GetString())
+            .Where(providerId => providerId != null)
+            .Cast<string>()
+            .ToArray();
+
+        CollectionAssert.DoesNotContain(providerIds, "finnhub");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_NoProviders_ReturnsEmptyArray()
+    {
+        var server = CreateServerWithProviders(Array.Empty<string>());
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response).EnumerateArray().ToList();
+
+        Assert.HasCount(0, providers);
+
+        var textContent = ExtractTextContent(response);
+        StringAssert.Contains(textContent, "\"providers\":[]");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_ToolDescription_IsCorrect()
+    {
+        var response = await InvokeHandleRequestAsync(new McpRequest
+        {
+            Id = 204,
+            Method = "tools/list"
+        });
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+
+        using var toolsDocument = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
+        var tools = toolsDocument.RootElement.GetProperty("tools").EnumerateArray().ToList();
+        var listProvidersTool = tools.FirstOrDefault(tool => string.Equals(tool.GetProperty("name").GetString(), "list_providers", StringComparison.Ordinal));
+
+        Assert.AreNotEqual(JsonValueKind.Undefined, listProvidersTool.ValueKind);
+
+        var description = listProvidersTool.GetProperty("description").GetString() ?? string.Empty;
+        StringAssert.Contains(description, "stock data providers currently available");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_InputSchema_HasNoProperties()
+    {
+        var response = await InvokeHandleRequestAsync(new McpRequest
+        {
+            Id = 205,
+            Method = "tools/list"
+        });
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+
+        using var toolsDocument = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
+        var tools = toolsDocument.RootElement.GetProperty("tools").EnumerateArray().ToList();
+        var listProvidersTool = tools.FirstOrDefault(tool => string.Equals(tool.GetProperty("name").GetString(), "list_providers", StringComparison.Ordinal));
+
+        Assert.AreNotEqual(JsonValueKind.Undefined, listProvidersTool.ValueKind);
+
+        var inputSchema = listProvidersTool.GetProperty("inputSchema");
+        Assert.AreEqual("object", inputSchema.GetProperty("type").GetString());
+
+        var properties = inputSchema.GetProperty("properties").EnumerateObject().ToList();
+        Assert.HasCount(0, properties);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_OnlyYahooHasOptionChain()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+
+        var yahoo = FindProviderById(providers, "yahoo");
+        var alphaVantage = FindProviderById(providers, "alphavantage");
+        var finnhub = FindProviderById(providers, "finnhub");
+
+        var yahooTypes = yahoo.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        var alphaVantageTypes = alphaVantage.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        var finnhubTypes = finnhub.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+
+        CollectionAssert.Contains(yahooTypes, "option_chain");
+        CollectionAssert.DoesNotContain(alphaVantageTypes, "option_chain");
+        CollectionAssert.DoesNotContain(finnhubTypes, "option_chain");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_YfinanceAlias_AcceptedByValidator()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "alphavantage", "finnhub" });
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var yahoo = FindProviderById(providers, "yahoo");
+
+        var aliases = yahoo.GetProperty("aliases").EnumerateArray().Select(alias => alias.GetString()).Where(alias => alias != null).Cast<string>().ToArray();
+        CollectionAssert.Contains(aliases, "yfinance");
+
+        var validation = validator.Validate("yfinance");
+        Assert.IsTrue(validation.IsValid);
+        Assert.IsNull(validation.ErrorMessage);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_Idempotent_ReturnsSameResults()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+
+        var firstResponse = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var secondResponse = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+
+        var firstResult = ExtractTextContent(firstResponse);
+        var secondResult = ExtractTextContent(secondResponse);
+
+        Assert.AreEqual(firstResult, secondResult);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_OtherToolDescriptions_ReferenceListProviders()
+    {
+        var response = await InvokeHandleRequestAsync(new McpRequest
+        {
+            Id = 206,
+            Method = "tools/list"
+        });
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+
+        using var toolsDocument = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
+        var tools = toolsDocument.RootElement.GetProperty("tools").EnumerateArray().ToList();
+
+        foreach (var tool in tools)
+        {
+            var inputSchema = tool.GetProperty("inputSchema");
+            if (!inputSchema.TryGetProperty("properties", out var properties)
+                || !properties.TryGetProperty("provider", out _))
+            {
+                continue;
+            }
+
+            var description = tool.GetProperty("description").GetString() ?? string.Empty;
+            StringAssert.Contains(description, "list_providers");
+        }
+    }
+
+    [TestMethod]
+    public async Task ListProviders_YahooAliasesIncludeYfinance()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var yahoo = FindProviderById(providers, "yahoo");
+
+        Assert.AreNotEqual(JsonValueKind.Undefined, yahoo.ValueKind);
+
+        var aliases = yahoo.GetProperty("aliases").EnumerateArray().Select(alias => alias.GetString()).Where(alias => alias != null).Cast<string>().ToArray();
+        CollectionAssert.Contains(aliases, "yahoo");
+        CollectionAssert.Contains(aliases, "yfinance");
+    }
+
+    [TestMethod]
+    public async Task ListProviders_YahooHasTenSupportedDataTypes()
+    {
+        var expectedTypes = new[]
+        {
+            "historical_prices",
+            "stock_info",
+            "news",
+            "market_news",
+            "stock_actions",
+            "financial_statement",
+            "holder_info",
+            "option_expiration_dates",
+            "option_chain",
+            "recommendations"
+        };
+
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var yahoo = FindProviderById(providers, "yahoo");
+
+        var supportedDataTypes = yahoo.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        CollectionAssert.AreEquivalent(expectedTypes, supportedDataTypes);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_AlphaVantageMetadata_IsCorrect()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var alphaVantage = FindProviderById(providers, "alphavantage");
+
+        Assert.AreEqual("Alpha Vantage", alphaVantage.GetProperty("displayName").GetString());
+
+        var aliases = alphaVantage.GetProperty("aliases").EnumerateArray().Select(alias => alias.GetString()).Where(alias => alias != null).Cast<string>().ToArray();
+        CollectionAssert.Contains(aliases, "alphavantage");
+        CollectionAssert.Contains(aliases, "alpha_vantage");
+
+        var supportedDataTypes = alphaVantage.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news" }, supportedDataTypes);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_FinnhubMetadata_IsCorrect()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var finnhub = FindProviderById(providers, "finnhub");
+
+        Assert.AreEqual("Finnhub", finnhub.GetProperty("displayName").GetString());
+
+        var aliases = finnhub.GetProperty("aliases").EnumerateArray().Select(alias => alias.GetString()).Where(alias => alias != null).Cast<string>().ToArray();
+        CollectionAssert.Contains(aliases, "finnhub");
+
+        var supportedDataTypes = finnhub.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news", "market_news" }, supportedDataTypes);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_ZeroArgumentCall_DoesNotThrow()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: false);
+
+        Assert.IsNotNull(response);
+        Assert.IsNull(response.Error);
+        Assert.IsNotNull(response.Result);
+    }
+
+    [TestMethod]
+    public async Task ListProviders_ResponseIsValidJson()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+
+        var textContent = ExtractTextContent(response);
+        using var payload = JsonDocument.Parse(textContent);
+
+        Assert.IsTrue(payload.RootElement.TryGetProperty("providers", out var providers));
+        Assert.AreEqual(JsonValueKind.Array, providers.ValueKind);
     }
 
     [TestMethod]
@@ -138,10 +430,10 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("\"provider\"", resultJson);
-        Assert.Contains("alphavantage", resultJson);
-        Assert.Contains("finnhub", resultJson);
-        Assert.Contains("yahoo", resultJson);
+        StringAssert.Contains(resultJson, "\"provider\"");
+        StringAssert.Contains(resultJson, "alphavantage");
+        StringAssert.Contains(resultJson, "finnhub");
+        StringAssert.Contains(resultJson, "yahoo");
     }
 
     [TestMethod]
@@ -162,7 +454,7 @@ public class StockDataMcpServerTests
         Assert.AreEqual(3, response.Id);
         Assert.IsNotNull(response.Error);
         Assert.AreEqual(-32603, response.Error.Code);
-        Assert.Contains("Unknown method", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Unknown method");
     }
 
     #endregion
@@ -203,7 +495,7 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
         var resultJson = JsonSerializer.Serialize(response.Result);
         // The response is wrapped in {content: [{type: "text", text: "..."}]}
-        Assert.Contains("Date", resultJson);
+        StringAssert.Contains(resultJson, "Date");
     }
 
     [TestMethod]
@@ -266,10 +558,10 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("serviceKey", resultJson);
-        Assert.Contains("yahoo", resultJson);
-        Assert.Contains("tier", resultJson);
-        Assert.Contains("free", resultJson);
+        StringAssert.Contains(resultJson, "serviceKey");
+        StringAssert.Contains(resultJson, "yahoo");
+        StringAssert.Contains(resultJson, "tier");
+        StringAssert.Contains(resultJson, "free");
     }
 
     [TestMethod]
@@ -309,8 +601,8 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("serviceKey", resultJson);
-        Assert.Contains("finnhub", resultJson);
+        StringAssert.Contains(resultJson, "serviceKey");
+        StringAssert.Contains(resultJson, "finnhub");
 
         finnhub.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
         yahoo.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -347,10 +639,10 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("serviceKey", resultJson);
-        Assert.Contains("yahoo", resultJson);
-        Assert.Contains("tier", resultJson);
-        Assert.Contains("free", resultJson);
+        StringAssert.Contains(resultJson, "serviceKey");
+        StringAssert.Contains(resultJson, "yahoo");
+        StringAssert.Contains(resultJson, "tier");
+        StringAssert.Contains(resultJson, "free");
     }
 
     [TestMethod]
@@ -387,10 +679,10 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("serviceKey", resultJson);
-        Assert.Contains("alphavantage", resultJson);
-        Assert.Contains("tier", resultJson);
-        Assert.Contains("free", resultJson);
+        StringAssert.Contains(resultJson, "serviceKey");
+        StringAssert.Contains(resultJson, "alphavantage");
+        StringAssert.Contains(resultJson, "tier");
+        StringAssert.Contains(resultJson, "free");
     }
 
     [TestMethod]
@@ -427,10 +719,10 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Error);
 
         var resultJson = JsonSerializer.Serialize(response.Result);
-        Assert.Contains("serviceKey", resultJson);
-        Assert.Contains("finnhub", resultJson);
-        Assert.Contains("tier", resultJson);
-        Assert.Contains("free", resultJson);
+        StringAssert.Contains(resultJson, "serviceKey");
+        StringAssert.Contains(resultJson, "finnhub");
+        StringAssert.Contains(resultJson, "tier");
+        StringAssert.Contains(resultJson, "free");
     }
 
     [TestMethod]
@@ -786,7 +1078,7 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
         Assert.AreEqual(-32603, response.Error.Code);
-        Assert.Contains("Missing params", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Missing params");
     }
 
     [TestMethod]
@@ -811,7 +1103,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Unknown tool", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Unknown tool");
     }
 
     [TestMethod]
@@ -836,8 +1128,8 @@ public class StockDataMcpServerTests
 
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Supported providers", response.Error.Message);
-        Assert.Contains("yahoo", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Supported providers");
+        StringAssert.Contains(response.Error.Message, "yahoo");
     }
 
     [TestMethod]
@@ -869,9 +1161,9 @@ public class StockDataMcpServerTests
         Assert.IsNotNull(response.Error.Data);
 
         var dataJson = JsonSerializer.Serialize(response.Error.Data);
-        Assert.Contains("serviceKey", dataJson);
-        Assert.Contains("yahoo", dataJson);
-        Assert.Contains("tier", dataJson);
+        StringAssert.Contains(dataJson, "serviceKey");
+        StringAssert.Contains(dataJson, "yahoo");
+        StringAssert.Contains(dataJson, "tier");
     }
 
     [TestMethod]
@@ -895,8 +1187,8 @@ public class StockDataMcpServerTests
 
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Unknown tool", response.Error.Message);
-        Assert.Contains("get_yahoo_finance_news", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Unknown tool");
+        StringAssert.Contains(response.Error.Message, "get_yahoo_finance_news");
     }
 
     [TestMethod]
@@ -927,8 +1219,8 @@ public class StockDataMcpServerTests
         Assert.IsNull(response.Result);
         Assert.IsNotNull(response.Error);
         Assert.AreEqual(-32603, response.Error.Code);
-        Assert.Contains("Provider 'finnhub' does not support GetMarketNewsAsync on the free tier.", response.Error.Message);
-        Assert.Contains("paid subscription", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Provider 'finnhub' does not support GetMarketNewsAsync on the free tier.");
+        StringAssert.Contains(response.Error.Message, "paid subscription");
     }
 
     [TestMethod]
@@ -982,7 +1274,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Invalid financial statement type", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Invalid financial statement type");
     }
 
     [TestMethod]
@@ -1010,7 +1302,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Invalid holder type", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Invalid holder type");
     }
 
     [TestMethod]
@@ -1040,7 +1332,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Invalid option type", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Invalid option type");
     }
 
     [TestMethod]
@@ -1068,7 +1360,7 @@ public class StockDataMcpServerTests
         // Assert
         Assert.IsNotNull(response);
         Assert.IsNotNull(response.Error);
-        Assert.Contains("Invalid recommendation type", response.Error.Message);
+        StringAssert.Contains(response.Error.Message, "Invalid recommendation type");
     }
 
     #endregion
@@ -1292,6 +1584,63 @@ public class StockDataMcpServerTests
     {
         // Now we can call the internal method directly thanks to InternalsVisibleTo
         return await _server.HandleRequestAsync(request, CancellationToken.None);
+    }
+
+    private static StockDataMcpServer CreateServerWithProviders(params string[] providerIds)
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var providers = providerIds.Select(CreateProviderMock).Select(mock => mock.Object).ToArray();
+        var router = new StockDataProviderRouter(config, providers);
+        return new StockDataMcpServer(router, config);
+    }
+
+    private static async Task<McpResponse> InvokeListProvidersAsync(StockDataMcpServer server, bool includeArgumentsProperty)
+    {
+        var paramsPayload = includeArgumentsProperty
+            ? "{\"name\":\"list_providers\",\"arguments\":{}}"
+            : "{\"name\":\"list_providers\"}";
+
+        using var paramsJson = JsonDocument.Parse(paramsPayload);
+
+        var request = new McpRequest
+        {
+            Id = 300,
+            Method = "tools/call",
+            Params = paramsJson.RootElement
+        };
+
+        return await server.HandleRequestAsync(request, CancellationToken.None);
+    }
+
+    private static JsonElement ParseProvidersFromToolResponse(McpResponse response)
+    {
+        var textContent = ExtractTextContent(response);
+        using var payload = JsonDocument.Parse(textContent);
+        return payload.RootElement.GetProperty("providers").Clone();
+    }
+
+    private static string ExtractTextContent(McpResponse response)
+    {
+        Assert.IsNotNull(response.Result);
+
+        using var wrapper = JsonDocument.Parse(JsonSerializer.Serialize(response.Result));
+        return wrapper.RootElement
+            .GetProperty("content")[0]
+            .GetProperty("text")
+            .GetString() ?? string.Empty;
+    }
+
+    private static JsonElement FindProviderById(JsonElement providers, string providerId)
+    {
+        foreach (var provider in providers.EnumerateArray())
+        {
+            if (string.Equals(provider.GetProperty("id").GetString(), providerId, StringComparison.OrdinalIgnoreCase))
+            {
+                return provider;
+            }
+        }
+
+        return default;
     }
 
     private static string ExtractToolDescription(string toolsListJson, string toolName)
@@ -1722,7 +2071,7 @@ public class StockDataMcpServerTests
 
         // Assert
         Assert.AreEqual(errorMessage, result);
-        Assert.Contains("Error", result);
+        StringAssert.Contains(result, "Error");
     }
 
     [TestMethod]

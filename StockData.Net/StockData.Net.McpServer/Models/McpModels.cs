@@ -68,3 +68,21 @@ public class Tool
     [JsonPropertyName("inputSchema")]
     public JsonElement InputSchema { get; set; }
 }
+
+/// <summary>
+/// Provider metadata for provider discovery responses.
+/// </summary>
+public sealed record ProviderInfo
+{
+    [JsonPropertyName("id")]
+    public string Id { get; init; } = string.Empty;
+
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; init; } = string.Empty;
+
+    [JsonPropertyName("aliases")]
+    public string[] Aliases { get; init; } = Array.Empty<string>();
+
+    [JsonPropertyName("supportedDataTypes")]
+    public string[] SupportedDataTypes { get; init; } = Array.Empty<string>();
+}

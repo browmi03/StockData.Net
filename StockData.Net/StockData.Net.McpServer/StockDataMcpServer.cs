@@ -139,8 +139,18 @@ public class StockDataMcpServer
         var tools = new[]
         {
             CreateToolDefinition(
+                "list_providers",
+                "List all stock data providers currently available on this server, including their display name, supported data types, and any configured aliases. Call this tool to discover valid values for the 'provider' parameter used in other tools.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                    }
+                }),
+            CreateToolDefinition(
                 "get_historical_stock_prices",
-                "Get historical stock prices for a given ticker symbol. Include Date, Open, High, Low, Close, Volume, Adj Close. Use provider when the user explicitly asks for a source (yahoo, alphavantage, finnhub).",
+                "Get historical stock prices for a given ticker symbol. Include Date, Open, High, Low, Close, Volume, Adj Close. Use provider when the user explicitly asks for a source (yahoo, alphavantage, finnhub). Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
@@ -149,63 +159,63 @@ public class StockDataMcpServer
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get historical prices for, e.g. \"AAPL\"" },
                         period = new { type = "string", description = "Valid periods: 1d,5d,1mo,3mo,6mo,1y,2y,5y,10y,ytd,max. Default is \"1mo\"", @default = "1mo" },
                         interval = new { type = "string", description = "Valid intervals: 1m,2m,5m,15m,30m,60m,90m,1h,1d,5d,1wk,1mo,3mo. Default is \"1d\"", @default = "1d" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_stock_info",
-                "Get stock information for a given ticker symbol. Include Stock Price & Trading Info, Company Information, Financial Metrics, and more. Use provider when the user explicitly asks for a source.",
+                "Get stock information for a given ticker symbol. Include Stock Price & Trading Info, Company Information, Financial Metrics, and more. Use provider when the user explicitly asks for a source. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get information for, e.g. \"AAPL\"" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_finance_news",
-                "Get news for a given ticker symbol using configured finance data providers. Use provider when the user explicitly asks for a source.",
+                "Get news for a given ticker symbol using configured finance data providers. Use provider when the user explicitly asks for a source. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get news for, e.g. \"AAPL\"" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_market_news",
-                "Get general market news without requiring a specific ticker. Returns title, summary, publish time, URL, and related tickers. Use provider when explicitly requested.",
+                "Get general market news without requiring a specific ticker. Returns title, summary, publish time, URL, and related tickers. Use provider when explicitly requested. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     }
                 }),
             CreateToolDefinition(
                 "get_stock_actions",
-                "Get stock dividends and stock splits for a given ticker symbol. Use provider when the user explicitly asks for a source.",
+                "Get stock dividends and stock splits for a given ticker symbol. Use provider when the user explicitly asks for a source. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get stock actions for, e.g. \"AAPL\"" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_financial_statement",
-                "Get financial statements for a ticker symbol. financial_type: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow. Use provider when explicitly requested.",
+                "Get financial statements for a ticker symbol. financial_type: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow. Use provider when explicitly requested. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
@@ -213,13 +223,13 @@ public class StockDataMcpServer
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get financial statement for, e.g. \"AAPL\"" },
                         financial_type = new { type = "string", description = "The type of financial statement to get. You can choose from the following financial statement types: income_stmt, quarterly_income_stmt, balance_sheet, quarterly_balance_sheet, cashflow, quarterly_cashflow." },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker", "financial_type" }
                 }),
             CreateToolDefinition(
                 "get_holder_info",
-                "Get holder information for a ticker symbol. holder_type: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders. Use provider when explicitly requested.",
+                "Get holder information for a ticker symbol. holder_type: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders. Use provider when explicitly requested. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
@@ -227,26 +237,26 @@ public class StockDataMcpServer
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get holder information for, e.g. \"AAPL\"" },
                         holder_type = new { type = "string", description = "The type of holder information to get. You can choose from the following holder types: major_holders, institutional_holders, mutualfund_holders, insider_transactions, insider_purchases, insider_roster_holders." },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker", "holder_type" }
                 }),
             CreateToolDefinition(
                 "get_option_expiration_dates",
-                "Fetch the available options expiration dates for a given ticker symbol.",
+                "Fetch the available options expiration dates for a given ticker symbol. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
                     properties = new
                     {
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get option expiration dates for, e.g. \"AAPL\"" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker" }
                 }),
             CreateToolDefinition(
                 "get_option_chain",
-                "Fetch the option chain for a given ticker symbol, expiration date, and option type.",
+                "Fetch the option chain for a given ticker symbol, expiration date, and option type. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
@@ -255,13 +265,13 @@ public class StockDataMcpServer
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get option chain for, e.g. \"AAPL\"" },
                         expiration_date = new { type = "string", description = "The expiration date for the options chain (format: 'YYYY-MM-DD')" },
                         option_type = new { type = "string", description = "The type of option to fetch ('calls' or 'puts')" },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker", "expiration_date", "option_type" }
                 }),
             CreateToolDefinition(
                 "get_recommendations",
-                "Get recommendations or upgrades/downgrades for a ticker symbol. months_back default is 12. Use provider when explicitly requested.",
+                "Get recommendations or upgrades/downgrades for a ticker symbol. months_back default is 12. Use provider when explicitly requested. Use list_providers to discover valid provider values.",
                 new
                 {
                     type = "object",
@@ -270,7 +280,7 @@ public class StockDataMcpServer
                         ticker = new { type = "string", description = "The ticker symbol of the stock to get recommendations for, e.g. \"AAPL\"" },
                         recommendation_type = new { type = "string", description = "The type of recommendation to get. You can choose from the following recommendation types: recommendations, upgrades_downgrades." },
                         months_back = new { type = "integer", description = "The number of months back to get upgrades/downgrades for, default is 12.", @default = 12 },
-                        provider = new { type = "string", description = "Optional provider override. Valid values: yahoo, alphavantage, finnhub." }
+                        provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker", "recommendation_type" }
                 })
@@ -287,12 +297,30 @@ public class StockDataMcpServer
         }
 
         var toolName = paramsElement.Value.GetProperty("name").GetString();
-        var arguments = paramsElement.Value.GetProperty("arguments");
 
         if (string.IsNullOrEmpty(toolName))
         {
             throw new Exception("Missing tool name");
         }
+
+        if (string.Equals(toolName, "list_providers", StringComparison.Ordinal))
+        {
+            var providers = _providerValidator.GetAvailableProviders();
+            var responseJson = JsonSerializer.Serialize(new { providers }, _jsonOptions);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = responseJson
+                    }
+                }
+            };
+        }
+
+        var arguments = paramsElement.Value.GetProperty("arguments");
 
         var requestedProvider = GetOptionalString(arguments, "provider", string.Empty);
         var validation = _providerValidator.Validate(requestedProvider);
