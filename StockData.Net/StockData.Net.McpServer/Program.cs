@@ -9,10 +9,14 @@ using StockData.Net.McpServer;
 using StockData.Net.Providers;
 using StockData.Net.Security;
 
-// Load .env file before reading configuration so ${VAR} placeholders resolve correctly.
-// TraversePath() walks up from the binary directory looking for a .env file;
-// it is a no-op when no file is found. OS environment variables are not overwritten.
-DotNetEnv.Env.TraversePath().Load();
+// Load .env file from the application directory so ${VAR} placeholders resolve correctly.
+// Explicitly loads from AppContext.BaseDirectory to ensure the .env file is found
+// regardless of the process working directory (e.g., when launched by VS Code MCP client).
+var envPath = Path.Combine(AppContext.BaseDirectory, ".env");
+if (File.Exists(envPath))
+{
+    DotNetEnv.Env.Load(envPath);
+}
 
 var builder = Host.CreateApplicationBuilder(args);
 
