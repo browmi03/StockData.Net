@@ -23,3 +23,9 @@ appsettings.*.local.json
 
 
 
+
+# Python artifacts (not used in this project)
+.venv/
+__pycache__/
+*.pyc
+*.pyo
