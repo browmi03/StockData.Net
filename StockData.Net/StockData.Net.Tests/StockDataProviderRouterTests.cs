@@ -1,8 +1,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Microsoft.Extensions.Logging.Abstractions;
 using StockData.Net.Configuration;
 using StockData.Net.Models;
 using StockData.Net.Providers;
+using StockData.Net.Clients.Finnhub;
+using StockData.Net.Clients.AlphaVantage;
+using NSubstitute;
 
 namespace StockData.Net.Tests;
 
@@ -20,6 +24,19 @@ public class StockDataProviderRouterTests
         _mockProvider.Setup(p => p.ProviderId).Returns("test_provider");
         _mockProvider.Setup(p => p.ProviderName).Returns("Test Provider");
         _mockProvider.Setup(p => p.Version).Returns("1.0.0");
+        _mockProvider.Setup(p => p.GetSupportedDataTypes(It.IsAny<string>())).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "historical_prices",
+            "stock_info",
+            "news",
+            "market_news",
+            "stock_actions",
+            "financial_statement",
+            "holder_info",
+            "option_expiration_dates",
+            "option_chain",
+            "recommendations"
+        });
 
         _config = new McpConfiguration
         {
@@ -333,78 +350,262 @@ public class StockDataProviderRouterTests
     }
 
     [TestMethod]
-    public async Task GetStockInfoAsync_WhenPrimaryThrowsNotSupportedException_ThrowsInvalidRequestWithoutFailover()
+    public async Task GetStockInfoAsync_WhenPrimaryThrowsNotSupportedException_FailsOverToFallbackProvider()
     {
         // Arrange
         var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
-        var exception = new NotSupportedException("Operation not supported");
-        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ThrowsAsync(exception);
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ThrowsAsync(new NotSupportedException("Operation not supported"));
         fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback");
 
-        // Act & Assert
-        NotSupportedException thrown;
-        try
-        {
-            await router.GetStockInfoAsync("AAPL");
-            Assert.Fail("Expected NotSupportedException was not thrown.");
-            return;
-        }
-        catch (NotSupportedException ex)
-        {
-            thrown = ex;
-        }
+        var result = await router.GetStockInfoAsync("AAPL");
 
-        Assert.AreSame(exception, thrown);
-        fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.AreEqual("fallback", result);
+        primary.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        fallback.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
-    public async Task GetStockInfoAsync_WhenPrimaryThrowsTierAwareNotSupportedException_ThrowsInvalidRequestWithoutFailover()
-    {
-        // Arrange
-        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
-        var exception = new TierAwareNotSupportedException("finnhub", "GetStockInfoAsync", availableOnPaidTier: false);
-        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ThrowsAsync(exception);
-        fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback");
-
-        // Act & Assert
-        TierAwareNotSupportedException thrown;
-        try
-        {
-            await router.GetStockInfoAsync("AAPL");
-            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
-            return;
-        }
-        catch (TierAwareNotSupportedException ex)
-        {
-            thrown = ex;
-        }
-
-        Assert.AreSame(exception, thrown);
-        fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [TestMethod]
-    public async Task GetStockInfoAsync_WhenInvalidRequestEncountered_DoesNotAttemptFailover()
+    public async Task GetStockInfoAsync_WhenPrimaryThrowsTierAwareNotSupportedException_FailsOverToFallbackProvider()
     {
         // Arrange
         var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
         primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TierAwareNotSupportedException("finnhub", "GetStockInfoAsync", availableOnPaidTier: true));
+            .ThrowsAsync(new TierAwareNotSupportedException("finnhub", "GetStockInfoAsync", availableOnPaidTier: false));
+        fallback.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("fallback");
+
+        var result = await router.GetStockInfoAsync("AAPL");
+
+        Assert.AreEqual("fallback", result);
+        primary.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+        fallback.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
+    public async Task GetStockInfoAsync_WhenArgumentExceptionEncountered_DoesNotAttemptFailover()
+    {
+        // Arrange
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback();
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ArgumentException("invalid ticker"));
 
         // Act & Assert
         try
         {
             await router.GetStockInfoAsync("AAPL");
-            Assert.Fail("Expected TierAwareNotSupportedException was not thrown.");
+            Assert.Fail("Expected ArgumentException was not thrown.");
         }
-        catch (TierAwareNotSupportedException)
+        catch (ArgumentException)
         {
             // Expected
         }
 
         primary.Verify(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
         fallback.Verify(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [TestMethod]
+    public async Task GivenProviderTierCapabilityMatrix_WhenRoutingByTier_ThenExpectedProviderIsUsed()
+    {
+        var (router, primary, fallback) = CreateStockInfoRouterWithFallback(primaryTier: "free");
+        primary.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "stock_info" });
+        fallback.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "stock_info" });
+        primary.Setup(p => p.GetStockInfoAsync("AAPL", It.IsAny<CancellationToken>())).ReturnsAsync("primary");
+
+        var result = await router.GetStockInfoAsync("AAPL");
+
+        Assert.AreEqual("primary", result);
+    }
+
+    [TestMethod]
+    public async Task GivenUnsupportedTierCapability_WhenRouting_ThenProviderIsSkippedWithoutFailure()
+    {
+        var primary = new Mock<IStockDataProvider>();
+        primary.Setup(p => p.ProviderId).Returns("primary_provider");
+        primary.Setup(p => p.ProviderName).Returns("Primary");
+        primary.Setup(p => p.Version).Returns("1.0.0");
+        primary.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        primary.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "stock_info" });
+
+        var fallback = new Mock<IStockDataProvider>();
+        fallback.Setup(p => p.ProviderId).Returns("fallback_provider");
+        fallback.Setup(p => p.ProviderName).Returns("Fallback");
+        fallback.Setup(p => p.Version).Returns("1.0.0");
+        fallback.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        fallback.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "market_news" });
+        fallback.Setup(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>())).ReturnsAsync("market-news");
+
+        var config = new McpConfiguration
+        {
+            Providers =
+            [
+                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } },
+                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+            ],
+            Routing = new RoutingConfiguration
+            {
+                DataTypeRouting = new Dictionary<string, DataTypeRouting>
+                {
+                    ["MarketNews"] = new DataTypeRouting
+                    {
+                        PrimaryProviderId = "primary_provider",
+                        FallbackProviderIds = new List<string> { "fallback_provider" }
+                    }
+                }
+            },
+            CircuitBreaker = new CircuitBreakerConfiguration { Enabled = false }
+        };
+
+        var router = new StockDataProviderRouter(config, new[] { primary.Object, fallback.Object });
+
+        var result = await router.GetMarketNewsAsync();
+        Assert.AreEqual("market-news", result);
+
+        primary.Verify(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>()), Times.Never);
+        fallback.Verify(p => p.GetMarketNewsAsync(It.IsAny<CancellationToken>()), Times.Once);
+
+        var health = router.GetDetailedHealthStatus();
+        Assert.IsTrue(health.TryGetValue("primary_provider", out var primaryHealth));
+        Assert.AreEqual(0, primaryHealth.FailedRequests);
+    }
+
+    [TestMethod]
+    public void GivenProviderCapabilityMatrix_WhenQueriedByTier_ThenExpectedCapabilitiesAreReturned()
+    {
+        var finnhubClient = new Mock<IFinnhubClient>(MockBehavior.Strict);
+        var finnhub = new FinnhubProvider(finnhubClient.Object, NullLogger<FinnhubProvider>.Instance);
+
+        var alphaClient = Substitute.For<IAlphaVantageClient>();
+        var alpha = new AlphaVantageProvider(alphaClient, Substitute.For<Microsoft.Extensions.Logging.ILogger<AlphaVantageProvider>>());
+
+        var yahooClient = new Mock<IYahooFinanceClient>();
+        var yahoo = new YahooFinanceProvider(yahooClient.Object);
+
+        var finnhubFree = finnhub.GetSupportedDataTypes("free");
+        var finnhubPaid = finnhub.GetSupportedDataTypes("paid");
+        var alphaFree = alpha.GetSupportedDataTypes("free");
+        var yahooFree = yahoo.GetSupportedDataTypes("free");
+        var yahooPaid = yahoo.GetSupportedDataTypes("paid");
+
+        CollectionAssert.Contains(finnhubFree.ToArray(), "market_news");
+        CollectionAssert.Contains(finnhubFree.ToArray(), "recommendations");
+        CollectionAssert.DoesNotContain(finnhubFree.ToArray(), "historical_prices");
+
+        CollectionAssert.Contains(finnhubPaid.ToArray(), "historical_prices");
+        CollectionAssert.Contains(finnhubPaid.ToArray(), "stock_actions");
+        CollectionAssert.Contains(finnhubPaid.ToArray(), "market_news");
+        CollectionAssert.Contains(finnhubPaid.ToArray(), "recommendations");
+
+        CollectionAssert.Contains(alphaFree.ToArray(), "historical_prices");
+        CollectionAssert.Contains(alphaFree.ToArray(), "stock_actions");
+        CollectionAssert.Contains(alphaFree.ToArray(), "market_news");
+
+        CollectionAssert.AreEquivalent(yahooFree.ToArray(), yahooPaid.ToArray());
+        CollectionAssert.Contains(yahooFree.ToArray(), "historical_prices");
+        CollectionAssert.Contains(yahooFree.ToArray(), "stock_actions");
+        CollectionAssert.Contains(yahooFree.ToArray(), "market_news");
+        CollectionAssert.Contains(yahooFree.ToArray(), "recommendations");
+    }
+
+    [TestMethod]
+    public async Task GivenProviderDoesNotSupportHistoricalPricesOnFreeTier_WhenRouting_ThenProviderIsSkippedAndFailureCountRemainsZero()
+    {
+        var primary = new Mock<IStockDataProvider>();
+        primary.Setup(p => p.ProviderId).Returns("primary_provider");
+        primary.Setup(p => p.ProviderName).Returns("Primary");
+        primary.Setup(p => p.Version).Returns("1.0.0");
+        primary.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        primary.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "stock_info" });
+
+        var fallback = new Mock<IStockDataProvider>();
+        fallback.Setup(p => p.ProviderId).Returns("fallback_provider");
+        fallback.Setup(p => p.ProviderName).Returns("Fallback");
+        fallback.Setup(p => p.Version).Returns("1.0.0");
+        fallback.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        fallback.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "historical_prices" });
+        fallback.Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>())).ReturnsAsync("fallback-historical");
+
+        var config = new McpConfiguration
+        {
+            Providers =
+            [
+                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } },
+                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+            ],
+            Routing = new RoutingConfiguration
+            {
+                DataTypeRouting = new Dictionary<string, DataTypeRouting>
+                {
+                    ["HistoricalPrices"] = new DataTypeRouting
+                    {
+                        PrimaryProviderId = "primary_provider",
+                        FallbackProviderIds = new List<string> { "fallback_provider" }
+                    }
+                }
+            },
+            CircuitBreaker = new CircuitBreakerConfiguration { Enabled = false }
+        };
+
+        var router = new StockDataProviderRouter(config, new[] { primary.Object, fallback.Object });
+
+        var result = await router.GetHistoricalPricesAsync("AAPL", "1mo", "1d");
+        Assert.AreEqual("fallback-historical", result);
+
+        primary.Verify(p => p.GetHistoricalPricesAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        fallback.Verify(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()), Times.Once);
+
+        var health = router.GetDetailedHealthStatus();
+        Assert.IsTrue(health.TryGetValue("primary_provider", out var primaryHealth));
+        Assert.AreEqual(0, primaryHealth.FailedRequests);
+    }
+
+    [TestMethod]
+    public async Task GivenPrimaryThrowsTierAwareNotSupportedException_WhenHistoricalPricesRequested_ThenRouterFailsOverToNextProvider()
+    {
+        var primary = new Mock<IStockDataProvider>();
+        primary.Setup(p => p.ProviderId).Returns("primary_provider");
+        primary.Setup(p => p.ProviderName).Returns("Primary");
+        primary.Setup(p => p.Version).Returns("1.0.0");
+        primary.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        primary.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "historical_prices" });
+        primary.Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TierAwareNotSupportedException("finnhub", "GetHistoricalPricesAsync", availableOnPaidTier: true));
+
+        var fallback = new Mock<IStockDataProvider>();
+        fallback.Setup(p => p.ProviderId).Returns("fallback_provider");
+        fallback.Setup(p => p.ProviderName).Returns("Fallback");
+        fallback.Setup(p => p.Version).Returns("1.0.0");
+        fallback.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        fallback.Setup(p => p.GetSupportedDataTypes("free")).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "historical_prices" });
+        fallback.Setup(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>())).ReturnsAsync("fallback-result");
+
+        var config = new McpConfiguration
+        {
+            Providers =
+            [
+                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } },
+                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, Tier = "free", HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+            ],
+            Routing = new RoutingConfiguration
+            {
+                DataTypeRouting = new Dictionary<string, DataTypeRouting>
+                {
+                    ["HistoricalPrices"] = new DataTypeRouting
+                    {
+                        PrimaryProviderId = "primary_provider",
+                        FallbackProviderIds = new List<string> { "fallback_provider" }
+                    }
+                }
+            },
+            CircuitBreaker = new CircuitBreakerConfiguration { Enabled = false }
+        };
+
+        var router = new StockDataProviderRouter(config, new[] { primary.Object, fallback.Object });
+
+        var result = await router.GetHistoricalPricesAsync("AAPL", "1mo", "1d");
+        Assert.AreEqual("fallback-result", result);
+
+        primary.Verify(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()), Times.Once);
+        fallback.Verify(p => p.GetHistoricalPricesAsync("AAPL", "1mo", "1d", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -506,27 +707,39 @@ public class StockDataProviderRouterTests
     }
 
     private static (StockDataProviderRouter Router, Mock<IStockDataProvider> Primary, Mock<IStockDataProvider> Fallback)
-        CreateStockInfoRouterWithFallback()
+        CreateStockInfoRouterWithFallback(string primaryTier = "free", string fallbackTier = "free")
     {
         var primary = new Mock<IStockDataProvider>();
         primary.Setup(p => p.ProviderId).Returns("primary_provider");
         primary.Setup(p => p.ProviderName).Returns("Primary");
         primary.Setup(p => p.Version).Returns("1.0.0");
         primary.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        primary.Setup(p => p.GetSupportedDataTypes(It.IsAny<string>())).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "stock_info",
+            "news",
+            "market_news"
+        });
 
         var fallback = new Mock<IStockDataProvider>();
         fallback.Setup(p => p.ProviderId).Returns("fallback_provider");
         fallback.Setup(p => p.ProviderName).Returns("Fallback");
         fallback.Setup(p => p.Version).Returns("1.0.0");
         fallback.Setup(p => p.GetHealthStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        fallback.Setup(p => p.GetSupportedDataTypes(It.IsAny<string>())).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "stock_info",
+            "news",
+            "market_news"
+        });
 
         var config = new McpConfiguration
         {
             Version = "1.0",
             Providers =
             [
-                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, HealthCheck = new HealthCheckConfiguration { Enabled = false } },
-                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, HealthCheck = new HealthCheckConfiguration { Enabled = false } }
+                new ProviderConfiguration { Id = "primary_provider", Type = "Test", Enabled = true, Priority = 1, Tier = primaryTier, HealthCheck = new HealthCheckConfiguration { Enabled = false } },
+                new ProviderConfiguration { Id = "fallback_provider", Type = "Test", Enabled = true, Priority = 2, Tier = fallbackTier, HealthCheck = new HealthCheckConfiguration { Enabled = false } }
             ],
             Routing = new RoutingConfiguration
             {

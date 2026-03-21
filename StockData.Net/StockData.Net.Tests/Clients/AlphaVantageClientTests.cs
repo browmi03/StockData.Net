@@ -126,6 +126,27 @@ public class AlphaVantageClientTests
     }
 
     [TestMethod]
+    public async Task GetHistoricalPricesAsync_UsesTimeSeriesDailyFunction_NotAdjustedFunction()
+    {
+        string? requestedUri = null;
+        var client = CreateClient(request =>
+        {
+            requestedUri = request.RequestUri?.ToString();
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"Time Series (Daily)\":{}}")
+            };
+        });
+
+        _ = await client.GetHistoricalPricesAsync("AAPL", new DateTime(2026, 3, 1), new DateTime(2026, 3, 2));
+
+        Assert.IsFalse(string.IsNullOrWhiteSpace(requestedUri));
+        StringAssert.Contains(requestedUri!, "function=TIME_SERIES_DAILY");
+        Assert.IsFalse(requestedUri!.Contains("TIME_SERIES_DAILY_ADJUSTED", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public async Task GetNewsAsync_Success_FiltersByDateAndNullUrl()
     {
         var payload = """
@@ -228,6 +249,59 @@ public class AlphaVantageClientTests
         StringAssert.Contains(ex.Message, "AlphaVantage news request failed");
         Assert.IsFalse(ex.Message.Contains("POIU1234LKJM9876", StringComparison.Ordinal));
         StringAssert.Contains(ex.Message, "[REDACTED]");
+    }
+
+    [TestMethod]
+    public async Task GetMarketNewsAsync_UsesNewsSentimentFunction()
+    {
+        string? requestedUri = null;
+        var client = CreateClient(request =>
+        {
+            requestedUri = request.RequestUri?.ToString();
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"feed\":[]}")
+            };
+        });
+
+        var result = await client.GetMarketNewsAsync();
+
+        Assert.IsNotNull(result);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(requestedUri));
+        StringAssert.Contains(requestedUri!, "function=NEWS_SENTIMENT");
+    }
+
+    [TestMethod]
+    public async Task GetStockActionsAsync_UsesDividendsAndSplitsFunctions()
+    {
+        var requestedUris = new List<string>();
+        var client = CreateClient(request =>
+        {
+            requestedUris.Add(request.RequestUri?.ToString() ?? string.Empty);
+
+            if (request.RequestUri?.ToString().Contains("function=DIVIDENDS", StringComparison.Ordinal) == true)
+            {
+                return new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StringContent("{\"data\":[]}")
+                };
+            }
+
+            return new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent("{\"data\":[]}")
+            };
+        });
+
+        var result = await client.GetStockActionsAsync("AAPL");
+
+        Assert.IsNotNull(result);
+        Assert.HasCount(2, requestedUris);
+        Assert.IsTrue(requestedUris.Any(uri => uri.Contains("function=DIVIDENDS", StringComparison.Ordinal)), "Expected DIVIDENDS function call.");
+        Assert.IsTrue(requestedUris.Any(uri => uri.Contains("function=SPLITS", StringComparison.Ordinal)), "Expected SPLITS function call.");
     }
 
     [TestMethod]

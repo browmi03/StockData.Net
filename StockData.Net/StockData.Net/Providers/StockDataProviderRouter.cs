@@ -375,6 +375,11 @@ public class StockDataProviderRouter
         return _providers.Keys.ToList().AsReadOnly();
     }
 
+    public IReadOnlyCollection<IStockDataProvider> GetRegisteredProviders()
+    {
+        return _providers.Values.ToList().AsReadOnly();
+    }
+
     private async Task<ProviderResult> ExecuteWithProviderSelectionAsync(
         string dataType,
         string? explicitProviderId,
@@ -457,6 +462,7 @@ public class StockDataProviderRouter
         var providerChain = GetProviderChain(dataType);
         var attemptedProviders = new List<string>();
         var providerErrors = new Dictionary<string, Exception>();
+        var tierFailures = new List<TierFailureDetail>();
 
         _logger?.LogDebug("Executing {DataType} with provider chain: {ProviderChain}",
             dataType, string.Join(" → ", providerChain));
@@ -483,6 +489,23 @@ public class StockDataProviderRouter
             if (!_providers.TryGetValue(providerId, out var provider))
             {
                 _logger?.LogWarning("Provider {ProviderId} not found in registry", providerId);
+                continue;
+            }
+
+            var configuredTier = GetProviderTier(providerId);
+            if (!IsProviderTierCapable(provider, configuredTier, dataType))
+            {
+                _logger?.LogInformation(
+                    "Skipping provider {ProviderId} for {DataType}: unsupported on tier {Tier}",
+                    providerId,
+                    dataType,
+                    configuredTier);
+
+                tierFailures.Add(new TierFailureDetail(
+                    provider.ProviderName,
+                    ToCapabilityKey(dataType),
+                    configuredTier,
+                    GetProviderUpgradeUrl(provider.ProviderId)));
                 continue;
             }
 
@@ -544,7 +567,10 @@ public class StockDataProviderRouter
                     ex.GetType().Name,
                     sanitizedMessage);
                 providerErrors[providerId] = ex;
-                _healthMonitor.RecordFailure(providerId, errorType);
+                if (errorType != ProviderErrorType.NotSupported)
+                {
+                    _healthMonitor.RecordFailure(providerId, errorType);
+                }
             }
         }
 
@@ -554,7 +580,7 @@ public class StockDataProviderRouter
             "All providers failed for {DataType} after {Duration}ms. Attempted: {AttemptedProviders}",
             dataType, totalFailoverTime.TotalMilliseconds, string.Join(" → ", attemptedProviders));
 
-        throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders);
+        throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders, tierFailures);
     }
 
     /// <summary>
@@ -578,6 +604,7 @@ public class StockDataProviderRouter
         var providerChain = GetProviderChain(dataType);
         var attemptedProviders = new List<string>();
         var providerErrors = new Dictionary<string, Exception>();
+        var tierFailures = new List<TierFailureDetail>();
         var executionTasks = new List<Task<AggregationProviderResult>>();
 
         _logger?.LogDebug("Executing {DataType} aggregation with provider chain: {ProviderChain}",
@@ -603,6 +630,23 @@ public class StockDataProviderRouter
                 continue;
             }
 
+            var configuredTier = GetProviderTier(providerId);
+            if (!IsProviderTierCapable(provider, configuredTier, dataType))
+            {
+                _logger?.LogInformation(
+                    "Skipping provider {ProviderId} for aggregated {DataType}: unsupported on tier {Tier}",
+                    providerId,
+                    dataType,
+                    configuredTier);
+
+                tierFailures.Add(new TierFailureDetail(
+                    provider.ProviderName,
+                    ToCapabilityKey(dataType),
+                    configuredTier,
+                    GetProviderUpgradeUrl(provider.ProviderId)));
+                continue;
+            }
+
             if (!_circuitBreakers.TryGetValue(providerId, out var circuitBreaker))
             {
                 _logger?.LogWarning("Circuit breaker not found for provider {ProviderId}", providerId);
@@ -620,7 +664,7 @@ public class StockDataProviderRouter
 
         if (executionTasks.Count == 0)
         {
-            throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders);
+            throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders, tierFailures);
         }
 
         var results = await Task.WhenAll(executionTasks);
@@ -650,7 +694,7 @@ public class StockDataProviderRouter
                 "All providers failed for aggregated {DataType} after {Duration}ms. Attempted: {AttemptedProviders}",
                 dataType, totalFailoverTime.TotalMilliseconds, string.Join(" → ", attemptedProviders));
 
-            throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders);
+            throw new ProviderFailoverException(dataType, providerErrors, attemptedProviders, tierFailures);
         }
 
         if (providerErrors.Count > 0)
@@ -738,7 +782,10 @@ public class StockDataProviderRouter
                 return AggregationProviderResult.Terminal(providerId, ex);
             }
 
-            _healthMonitor.RecordFailure(providerId, errorType);
+            if (errorType != ProviderErrorType.NotSupported)
+            {
+                _healthMonitor.RecordFailure(providerId, errorType);
+            }
             _logger?.LogWarning(
                 "Provider {ProviderId} failed during aggregated {DataType} with error type {ErrorType}",
                 providerId,
@@ -865,13 +912,65 @@ public class StockDataProviderRouter
         return exception switch
         {
             ArgumentException => ProviderErrorType.InvalidRequest,
-            NotSupportedException => ProviderErrorType.InvalidRequest,
+            TierAwareNotSupportedException => ProviderErrorType.NotSupported,
+            NotSupportedException => ProviderErrorType.NotSupported,
             TaskCanceledException or TimeoutException => ProviderErrorType.Timeout,
             HttpRequestException httpEx when httpEx.StatusCode.HasValue && (int)httpEx.StatusCode.Value == 429 
                 => ProviderErrorType.RateLimitExceeded,
             HttpRequestException => ProviderErrorType.NetworkError,
             UnauthorizedAccessException => ProviderErrorType.AuthenticationError,
             _ => ProviderErrorType.Unknown
+        };
+    }
+
+    private string GetProviderTier(string providerId)
+    {
+        var providerConfig = _configuration.Providers.FirstOrDefault(
+            p => string.Equals(NormalizeProviderId(p.Id), providerId, StringComparison.OrdinalIgnoreCase));
+
+        return string.IsNullOrWhiteSpace(providerConfig?.Tier)
+            ? "free"
+            : providerConfig.Tier;
+    }
+
+    private bool IsProviderTierCapable(IStockDataProvider provider, string tier, string dataType)
+    {
+        var supportedDataTypes = provider.GetSupportedDataTypes(tier);
+        if (supportedDataTypes == null || supportedDataTypes.Count == 0)
+        {
+            // Legacy fallback for providers/tests that do not declare capability sets.
+            return true;
+        }
+
+        var capabilityKey = ToCapabilityKey(dataType);
+        return supportedDataTypes.Contains(capabilityKey, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string ToCapabilityKey(string dataType)
+    {
+        return dataType switch
+        {
+            "HistoricalPrices" => "historical_prices",
+            "StockInfo" => "stock_info",
+            "News" => "news",
+            "MarketNews" => "market_news",
+            "StockActions" => "stock_actions",
+            "FinancialStatement" => "financial_statement",
+            "HolderInfo" => "holder_info",
+            "OptionExpirationDates" => "option_expiration_dates",
+            "OptionChain" => "option_chain",
+            "Recommendations" => "recommendations",
+            _ => dataType.Trim().ToLowerInvariant()
+        };
+    }
+
+    private static string GetProviderUpgradeUrl(string providerId)
+    {
+        return NormalizeProviderId(providerId) switch
+        {
+            "finnhub" => ProviderUpgradeUrls.FinnhubPricing,
+            "alphavantage" => ProviderUpgradeUrls.AlphaVantagePremium,
+            _ => string.Empty
         };
     }
 

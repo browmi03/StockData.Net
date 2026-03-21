@@ -36,6 +36,11 @@ public enum ProviderErrorType
     AuthenticationError,
 
     /// <summary>
+    /// Data type is not supported by this provider (failover-worthy)
+    /// </summary>
+    NotSupported,
+
+    /// <summary>
     /// Invalid caller input/request (terminal, no failover)
     /// </summary>
     InvalidRequest,

@@ -11,6 +11,11 @@ public class ProviderFailoverException : Exception
     public string DataType { get; }
 
     /// <summary>
+    /// Tier-related provider failures captured during pre-flight capability checks.
+    /// </summary>
+    public IReadOnlyList<TierFailureDetail> TierFailures { get; init; } = Array.Empty<TierFailureDetail>();
+
+    /// <summary>
     /// Exceptions from each provider that was attempted
     /// </summary>
     public Dictionary<string, Exception> ProviderErrors { get; }
@@ -23,12 +28,14 @@ public class ProviderFailoverException : Exception
     public ProviderFailoverException(
         string dataType,
         Dictionary<string, Exception> providerErrors,
-        List<string> attemptedProviders)
+        List<string> attemptedProviders,
+        IReadOnlyList<TierFailureDetail>? tierFailures = null)
         : base(BuildMessage(dataType, providerErrors, attemptedProviders))
     {
         DataType = dataType;
         ProviderErrors = providerErrors;
         AttemptedProviders = attemptedProviders;
+        TierFailures = tierFailures ?? Array.Empty<TierFailureDetail>();
     }
 
     private static string BuildMessage(

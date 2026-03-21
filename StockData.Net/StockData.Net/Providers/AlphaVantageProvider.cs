@@ -11,6 +11,15 @@ namespace StockData.Net.Providers;
 /// </summary>
 public sealed class AlphaVantageProvider : IStockDataProvider
 {
+    private static readonly IReadOnlySet<string> FreeCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "stock_info",
+        "news",
+        "historical_prices",
+        "stock_actions",
+        "market_news"
+    };
+
     private readonly IAlphaVantageClient _client;
     private readonly ILogger<AlphaVantageProvider> _logger;
 
@@ -78,42 +87,81 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         }, nameof(GetNewsAsync));
     }
 
-    public Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
-        throw new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetMarketNewsAsync)}");
+        return await ExecuteSafelyAsync(async () =>
+        {
+            var items = await _client.GetMarketNewsAsync(cancellationToken);
+            return MapMarketNews(items);
+        }, nameof(GetMarketNewsAsync));
     }
 
-    public Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetStockActionsAsync)}"));
+    public async Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteSafelyAsync(async () =>
+        {
+            ValidateTicker(ticker);
+            var actions = await _client.GetStockActionsAsync(ticker, cancellationToken);
+
+            var payload = new
+            {
+                symbol = ticker,
+                dividends = actions.Dividends.Select(item => new
+                {
+                    item.Date,
+                    item.Value,
+                    item.ActionType,
+                    sourceProvider = ProviderId
+                }),
+                stockSplits = actions.Splits.Select(item => new
+                {
+                    item.Date,
+                    item.Value,
+                    item.Numerator,
+                    item.Denominator,
+                    item.ActionType,
+                    sourceProvider = ProviderId
+                }),
+                sourceProvider = ProviderId
+            };
+
+            return JsonSerializer.Serialize(payload);
+        }, nameof(GetStockActionsAsync));
+    }
 
     public Task<string> GetFinancialStatementAsync(
         string ticker,
         FinancialStatementType statementType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetFinancialStatementAsync)}"));
+        => Task.FromException<string>(new TierAwareNotSupportedException(ProviderId, nameof(GetFinancialStatementAsync), availableOnPaidTier: false));
 
     public Task<string> GetHolderInfoAsync(
         string ticker,
         HolderType holderType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetHolderInfoAsync)}"));
+        => Task.FromException<string>(new TierAwareNotSupportedException(ProviderId, nameof(GetHolderInfoAsync), availableOnPaidTier: false));
 
     public Task<string> GetOptionExpirationDatesAsync(string ticker, CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetOptionExpirationDatesAsync)}"));
+        => Task.FromException<string>(new TierAwareNotSupportedException(ProviderId, nameof(GetOptionExpirationDatesAsync), availableOnPaidTier: false));
 
     public Task<string> GetOptionChainAsync(
         string ticker,
         string expirationDate,
         OptionType optionType,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetOptionChainAsync)}"));
+        => Task.FromException<string>(new TierAwareNotSupportedException(ProviderId, nameof(GetOptionChainAsync), availableOnPaidTier: false));
 
     public Task<string> GetRecommendationsAsync(
         string ticker,
         RecommendationType recommendationType,
         int monthsBack = 12,
         CancellationToken cancellationToken = default)
-        => Task.FromException<string>(new NotSupportedException($"Provider '{ProviderId}' does not support {nameof(GetRecommendationsAsync)}"));
+        => Task.FromException<string>(new TierAwareNotSupportedException(ProviderId, nameof(GetRecommendationsAsync), availableOnPaidTier: false));
+
+    public IReadOnlySet<string> GetSupportedDataTypes(string tier)
+    {
+        return FreeCapabilities;
+    }
 
     public async Task<bool> GetHealthStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -177,6 +225,32 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         var blocks = new List<string>(items.Count);
 
         foreach (var item in items)
+        {
+            var published = item.Timestamp > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(item.Timestamp).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+                : "Unknown";
+
+            var relatedTickers = item.RelatedTickers.Count > 0
+                ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
+                : string.Empty;
+
+            blocks.Add($"Title: {item.Title}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+        }
+
+        return string.Join("\n\n", blocks);
+    }
+
+    private static string MapMarketNews(IEnumerable<NewsItem> items)
+    {
+        var itemList = items.ToList();
+        if (itemList.Count == 0)
+        {
+            return "No market news found.";
+        }
+
+        var blocks = new List<string>(itemList.Count);
+
+        foreach (var item in itemList)
         {
             var published = item.Timestamp > 0
                 ? DateTimeOffset.FromUnixTimeSeconds(item.Timestamp).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")

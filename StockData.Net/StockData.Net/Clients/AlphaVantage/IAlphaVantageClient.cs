@@ -5,4 +5,6 @@ public interface IAlphaVantageClient
     Task<AlphaVantageQuote?> GetQuoteAsync(string symbol, CancellationToken cancellationToken = default);
     Task<List<AlphaVantageCandle>> GetHistoricalPricesAsync(string symbol, DateTime from, DateTime to, CancellationToken cancellationToken = default);
     Task<List<AlphaVantageNewsItem>> GetNewsAsync(string symbol, DateTime from, DateTime to, CancellationToken cancellationToken = default);
+    Task<IEnumerable<NewsItem>> GetMarketNewsAsync(CancellationToken cancellationToken = default);
+    Task<StockActionsResult> GetStockActionsAsync(string symbol, CancellationToken cancellationToken = default);
 }

@@ -115,7 +115,7 @@ public sealed class AlphaVantageClient : IAlphaVantageClient
 
             var encodedSymbol = Uri.EscapeDataString(symbol.Trim().ToUpperInvariant());
             var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
-            var requestUri = $"query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={encodedSymbol}&outputsize=full&apikey={apiKey}";
+            var requestUri = $"query?function=TIME_SERIES_DAILY&symbol={encodedSymbol}&outputsize=full&apikey={apiKey}";
 
             using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
             if (response.StatusCode == HttpStatusCode.NotFound)
@@ -264,6 +264,153 @@ public sealed class AlphaVantageClient : IAlphaVantageClient
         {
             var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
             throw new InvalidOperationException($"AlphaVantage news request failed: {sanitizedMessage}", ex);
+        }
+    }
+
+    public async Task<IEnumerable<NewsItem>> GetMarketNewsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+            var requestUri = $"query?function=NEWS_SENTIMENT&limit=50&apikey={apiKey}";
+
+            using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return [];
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var payload = await JsonSerializer.DeserializeAsync<AlphaVantageNewsResponse>(stream, JsonOptions, cancellationToken);
+            if (payload is null)
+            {
+                return [];
+            }
+
+            ThrowIfRateLimited(payload.Note ?? payload.Information);
+
+            if (payload.Feed is null || payload.Feed.Count == 0)
+            {
+                return [];
+            }
+
+            var items = new List<NewsItem>(payload.Feed.Count);
+            foreach (var row in payload.Feed)
+            {
+                if (string.IsNullOrWhiteSpace(row.Url))
+                {
+                    continue;
+                }
+
+                var tickers = row.TickerSentiment?
+                    .Select(x => x.Ticker)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList() ?? [];
+
+                items.Add(new NewsItem(
+                    Title: row.Title ?? string.Empty,
+                    Source: row.Source ?? string.Empty,
+                    Url: row.Url,
+                    Summary: row.Summary ?? string.Empty,
+                    Timestamp: ParseNewsTimestamp(row.TimePublished),
+                    RelatedTickers: tickers));
+            }
+
+            return items;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"AlphaVantage market news request failed: {sanitizedMessage}", ex);
+        }
+    }
+
+    public async Task<StockActionsResult> GetStockActionsAsync(string symbol, CancellationToken cancellationToken = default)
+    {
+        ValidateSymbol(symbol);
+
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var encodedSymbol = Uri.EscapeDataString(symbol.Trim().ToUpperInvariant());
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+
+            var dividendsRequestUri = $"query?function=DIVIDENDS&symbol={encodedSymbol}&apikey={apiKey}";
+            var splitsRequestUri = $"query?function=SPLITS&symbol={encodedSymbol}&apikey={apiKey}";
+
+            using var dividendsResponse = await _httpClient.GetAsync(dividendsRequestUri, cancellationToken);
+            using var splitsResponse = await _httpClient.GetAsync(splitsRequestUri, cancellationToken);
+
+            dividendsResponse.EnsureSuccessStatusCode();
+            splitsResponse.EnsureSuccessStatusCode();
+
+            await using var dividendsStream = await dividendsResponse.Content.ReadAsStreamAsync(cancellationToken);
+            await using var splitsStream = await splitsResponse.Content.ReadAsStreamAsync(cancellationToken);
+
+            var dividendsPayload = await JsonSerializer.DeserializeAsync<AlphaVantageDividendsResponse>(dividendsStream, JsonOptions, cancellationToken)
+                ?? new AlphaVantageDividendsResponse();
+            var splitsPayload = await JsonSerializer.DeserializeAsync<AlphaVantageSplitsResponse>(splitsStream, JsonOptions, cancellationToken)
+                ?? new AlphaVantageSplitsResponse();
+
+            ThrowIfRateLimited(dividendsPayload.Note ?? dividendsPayload.Information);
+            ThrowIfRateLimited(splitsPayload.Note ?? splitsPayload.Information);
+
+            var dividends = new List<StockActionItem>();
+            foreach (var entry in dividendsPayload.Data ?? [])
+            {
+                if (!DateTime.TryParseExact(entry.ExDividendDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedDate))
+                {
+                    continue;
+                }
+
+                var amount = decimal.TryParse(entry.DividendAmount, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsedAmount)
+                    ? parsedAmount
+                    : 0m;
+
+                dividends.Add(new StockActionItem(parsedDate.Date, "dividend", amount, null, null));
+            }
+
+            var splits = new List<StockActionItem>();
+            foreach (var entry in splitsPayload.Data ?? [])
+            {
+                if (!DateTime.TryParseExact(entry.EffectiveDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsedDate))
+                {
+                    continue;
+                }
+
+                var coefficient = ParseDouble(entry.SplitCoefficient);
+                var numerator = coefficient;
+                var denominator = 1d;
+
+                splits.Add(new StockActionItem(
+                    parsedDate.Date,
+                    "split",
+                    Convert.ToDecimal(coefficient, CultureInfo.InvariantCulture),
+                    Convert.ToDecimal(numerator, CultureInfo.InvariantCulture),
+                    Convert.ToDecimal(denominator, CultureInfo.InvariantCulture)));
+            }
+
+            return new StockActionsResult(dividends, splits);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"AlphaVantage stock actions request failed: {sanitizedMessage}", ex);
         }
     }
 
