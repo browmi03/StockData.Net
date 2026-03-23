@@ -7,6 +7,11 @@
   Related Issue: #32
 -->
 
+## Document Info
+
+- **Status**: Complete
+- **Last Updated**: 2026-03-19
+
 ## Overview
 
 The StockData.Net MCP server must gracefully handle API provider subscription tier limitations (free vs. paid) for Finnhub and AlphaVantage providers. Users—who are investors, not developers—need transparent fallback behavior when a provider cannot fulfill a request due to tier restrictions, along with clear, actionable error messages when all providers fail. The system must also fix code bugs causing null reference errors on free-tier-supported endpoints.

@@ -28,7 +28,7 @@ The test strategy separates these cleanly:
 
 All tests follow project conventions: MSTest v2, `GivenCondition_WhenAction_ThenExpectedResult` naming, Arrange-Act-Assert layout, Moq or NSubstitute for mocking.
 
-> **Configuration note**: Valid tier values are `"free"` and `"paid"` (case-insensitive) only. Legacy values `"premium"` and `"enterprise"` are not accepted and cause a startup configuration error. See ADR-003 in `docs/architecture/decisions/adr-issue-32-tier-config.md`.
+> **Configuration note**: Valid tier values are `"free"` and `"paid"` (case-insensitive) only. Legacy values `"premium"` and `"enterprise"` are not accepted and cause a startup configuration error. See ADR-003 in `docs/architecture/decisions/adr-003-provider-tier-config.md`.
 
 ---
 

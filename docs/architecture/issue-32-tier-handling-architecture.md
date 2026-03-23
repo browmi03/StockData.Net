@@ -82,7 +82,7 @@ The root cause chain in the C# server is:
 
 - **Pre-flight Capability Filtering** — The router checks each provider's declared capabilities before invoking it. Providers that cannot serve a request on their configured tier are skipped in `O(1)` without incurring an HTTP call, a circuit-breaker trip, or an exception.
 
-- **Code-First Capability Matrix** — Each provider declares its own capabilities as static data in code (see [ADR-003](decisions/adr-issue-32-tier-config.md)). This co-locates tier knowledge with the implementation and is verified at compile time.
+- **Code-First Capability Matrix** — Each provider declares its own capabilities as static data in code (see [ADR-003](decisions/adr-003-provider-tier-config.md)). This co-locates tier knowledge with the implementation and is verified at compile time.
 
 - **Error Type Stratification** — A new `ProviderErrorType.NotSupported` is distinguished from `ProviderErrorType.InvalidRequest`. `NotSupported` is failover-worthy (try next provider); `InvalidRequest` remains terminal (bad caller input, do not retry).
 
@@ -275,7 +275,7 @@ The exception gains a `IReadOnlyList<TierFailureDetail> TierFailures` property p
 
 | Decision | Choice | Rationale |
 | --- | --- | --- |
-| Capability declaration location | Code (provider class), not configuration | Provider API capabilities change only when code changes; static code is type-safe, co-located, and cannot go stale relative to the implementation. See [ADR-003](decisions/adr-issue-32-tier-config.md). |
+| Capability declaration location | Code (provider class), not configuration | Provider API capabilities change only when code changes; static code is type-safe, co-located, and cannot go stale relative to the implementation. See [ADR-003](decisions/adr-003-provider-tier-config.md). |
 | Historical prices — AlphaVantage | Switch from `TIME_SERIES_DAILY_ADJUSTED` to `TIME_SERIES_DAILY` on free tier | The `ADJUSTED` endpoint is premium on AlphaVantage. Free tier has `TIME_SERIES_DAILY` with up to 100 data points in compact mode. |
 | Fallover classification for `NotSupportedException` | New `NotSupported` enum value (failover-worthy, not terminal) | Tier limitations are a capability gap, not an invalid request. The caller's input is valid; this provider simply cannot serve it. Failover to the next provider is the correct resolution. |
 | Error message formatting | Dedicated `FormatInvestorFriendlyMessage` method in `StockDataMcpServer` | The domain layer (`ProviderFailoverException`) carries structured data; the presentation layer (MCP server) formats the user-facing string. This avoids investor-specific language in domain exceptions. |
@@ -296,7 +296,7 @@ The exception gains a `IReadOnlyList<TierFailureDetail> TierFailures` property p
 ## Related Documents
 
 - Feature Specification: [docs/features/issue-32-provider-free-paid-tier-handling.md](../features/issue-32-provider-free-paid-tier-handling.md)
-- ADR for Tier Config Approach: [docs/architecture/decisions/adr-issue-32-tier-config.md](decisions/adr-issue-32-tier-config.md)
+- ADR for Tier Config Approach: [docs/architecture/decisions/adr-003-provider-tier-config.md](decisions/adr-003-provider-tier-config.md)
 - Error Handling Architecture (Issue #17): [docs/architecture/issue-17-error-handling-architecture.md](issue-17-error-handling-architecture.md)
 - Security (Issue #32 Tier Handling): [docs/security/issue-32-tier-handling-security.md](../security/issue-32-tier-handling-security.md)
 - Security (Provider Selection): [docs/security/provider-selection-security.md](../security/provider-selection-security.md)

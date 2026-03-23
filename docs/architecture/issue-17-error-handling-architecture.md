@@ -4,8 +4,27 @@
 
 - **Feature Spec**: [issue-17-mcp-error-handling.md](../features/issue-17-mcp-error-handling.md)
 - **Canonical Architecture**: [stock-data-aggregation-canonical-architecture.md](stock-data-aggregation-canonical-architecture.md)
-- **Status**: Draft
+- **Status**: Superseded
 - **Last Updated**: 2026-03-09
+- **Superseded By**: [issue-32-tier-handling-architecture.md](issue-32-tier-handling-architecture.md)
+
+---
+
+## SUPERSEDED NOTICE
+
+**This architecture has been superseded by Issue #32 (Provider Free/Paid Tier Handling).**
+
+Issue #32 implements a more comprehensive solution for tier-aware provider capabilities:
+
+- ADR-003 establishes `"free"` and `"paid"` as the only valid tier values
+- Static code-based provider capability matrices replace runtime tier exceptions
+- The `NotSupportedException` → `InvalidRequest` mapping proposed here is incorporated into Issue #32's implementation
+
+**For the current architecture, see:** [issue-32-tier-handling-architecture.md](issue-32-tier-handling-architecture.md)
+
+**Historical context:** This document describes the initial proposal for handling `NotSupportedException` and tier-aware error messages specific to Finnhub free tier limitations. The proposal has been integrated and extended by Issue #32.
+
+---
 
 ## Scope
 
@@ -314,7 +333,7 @@ The [canonical architecture](stock-data-aggregation-canonical-architecture.md) r
 | Section | Update |
 | --- | --- |
 | Canonical Error Taxonomy table | Add `NotSupportedException` to `InvalidRequest` trigger conditions |
-| MCP Tool Surface | Rename `get_yahoo_finance_news` → `get_finance_news` (note: canonical doc uses `get_news`, verify alignment) |
+| MCP Tool Surface | Tool is named `get_finance_news` (aligned with canonical architecture) |
 | Components table | Add `TierAwareNotSupportedException` or note in ErrorClassifier row |
 
 ---

@@ -1,5 +1,9 @@
 # Feature: list_providers MCP Tool
 
+## Document Info
+
+- **Status**: In Review
+
 ## Overview
 
 Add a new zero-argument MCP tool named `list_providers` that returns the set of stock data providers currently registered and available in the server. The tool exposes each provider's identifier, display name, aliases, and supported data types, enabling clients to programmatically discover valid provider options at runtime.

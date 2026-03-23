@@ -3,9 +3,9 @@
 ## Document Info
 
 - **Feature Spec**: [list-providers-tool.md](../features/list-providers-tool.md)
-- **Architecture**: [stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)
+- **Architecture**: [list-providers-tool-architecture.md](../architecture/list-providers-tool-architecture.md)
 - **Baseline Security**: [security-summary.md](security-summary.md) · [provider-selection-security.md](provider-selection-security.md)
-- **Status**: Draft
+- **Status**: In Review
 - **Last Updated**: 2026-03-19
 
 ---
@@ -352,6 +352,7 @@ For the developer implementing this feature, the following constraints from this
 ## Related Documents
 
 - Feature Specification: [list-providers-tool.md](../features/list-providers-tool.md)
+- Architecture: [list-providers-tool-architecture.md](../architecture/list-providers-tool-architecture.md)
 - Baseline Security: [security-summary.md](security-summary.md)
 - Provider Selection Security: [provider-selection-security.md](provider-selection-security.md)
-- Architecture: [stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)
+- Canonical Architecture: [stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)

@@ -13,7 +13,7 @@
 - **Architecture**: [docs/architecture/stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)
 - **Baseline Security**: [docs/security/security-summary.md](security-summary.md)
 - **Prior Art**: [docs/security/provider-selection-security.md](provider-selection-security.md)
-- **Status**: Draft
+- **Status**: In Review
 - **Last Updated**: 2026-03-20
 
 ---

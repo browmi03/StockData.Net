@@ -240,7 +240,7 @@ sequenceDiagram
 - `get_holders` — Maps to IStockDataProvider.GetHoldersAsync
 - `get_dividends` — Maps to IStockDataProvider.GetDividendsAsync
 - `get_stock_actions` — Maps to IStockDataProvider.GetStockActionsAsync
-- `get_health` — Returns provider health metrics
+- `list_providers` — Returns list of configured providers with availability status
 
 ## Technology Decisions
 
@@ -285,7 +285,7 @@ sequenceDiagram
 
 - **Logging**: Structured JSON logs with `requestId`, `dataType`, `providerId`, `mode`, `latencyMs`, `errorCategory`
 - **Metrics**: Deduplication metrics (`originalCount`, `deduplicatedCount`, `processingTimeMs`); circuit breaker state transitions; provider health statistics
-- **Health Visibility**: MCP `get_health` tool provides provider status, success rates, average latency, circuit breaker states
+- **Health Visibility**: MCP `list_providers` tool provides provider availability status and tier classification
 - **Diagnostics**: All routing decisions logged; error aggregation includes per-provider details
 
 ## Deployment Architecture

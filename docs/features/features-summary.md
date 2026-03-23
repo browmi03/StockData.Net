@@ -59,7 +59,7 @@ The current MCP server implementation is tightly coupled to Yahoo Finance as a s
 
 ### User Story 5: As a developer, I want all 10 MCP tools implemented so that I have complete financial data access through the MCP protocol
 
-> 5.1 Given the MCP server is running, when I list available tools, then all 10 tools are present (get_stock_info, get_news, get_market_news, get_historical_prices, get_options, get_financials, get_holders, get_dividends, get_stock_actions, get_health)
+> 5.1 Given the MCP server is running, when I list available tools, then all 10 tools are present (get_stock_info, get_finance_news, get_historical_stock_prices, get_option_chain, get_option_expiration_dates, get_financial_statement, get_holder_info, get_stock_actions, get_recommendations, list_providers)
 >
 > 5.2 Given I call any of the 10 tools with valid parameters, when the provider is available, then I receive properly formatted data
 >

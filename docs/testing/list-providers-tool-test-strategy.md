@@ -3,8 +3,9 @@
 ## Document Info
 
 - **Feature Spec**: [docs/features/list-providers-tool.md](../features/list-providers-tool.md)
-- **Architecture**: [Stock Data Aggregation Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
-- **Status**: Draft
+- **Architecture**: [list-providers-tool-architecture.md](../architecture/list-providers-tool-architecture.md)
+- **Security**: [list-providers-tool-security.md](../security/list-providers-tool-security.md)
+- **Status**: In Review
 - **Last Updated**: 2026-03-19
 
 ---
@@ -71,26 +72,26 @@ Testing validates five user stories spanning 20 Given/When/Then scenarios. The s
 
 | Spec Scenario | Description | Test Case ID(s) | Test Level | Status |
 | --- | --- | --- | --- | --- |
-| 4.1 | `tools/list` includes `list_providers` entry | TC-001 | Unit | Not Started |
-| 4.2 | `list_providers` description is "Returns the list of stock data providers..." | TC-002 | Unit | Not Started |
-| 4.3 | `list_providers` input schema accepts no arguments | TC-003 | Unit | Not Started |
-| 1.1 | All 3 providers configured → response includes all 3 with complete metadata | TC-004, TC-017 | Unit, Integration | Not Started |
-| 1.2 | Finnhub missing → only Yahoo and Alpha Vantage returned | TC-005, TC-018 | Unit, Integration | Not Started |
-| 1.3 | No providers configured → `{"providers":[]}` | TC-006 | Unit | Not Started |
-| 1.4 | Multiple invocations, unchanged config → identical results | TC-013 | Unit | Not Started |
-| 2.1 | Yahoo Finance `supportedDataTypes` includes all 10 specified types | TC-008 | Unit | Not Started |
-| 2.2 | Alpha Vantage `supportedDataTypes`: `["historical_prices","stock_info","news"]` | TC-009 | Unit | Not Started |
-| 2.3 | Finnhub `supportedDataTypes`: `["historical_prices","stock_info","news","market_news"]` | TC-010 | Unit | Not Started |
-| 2.4 | Only Yahoo Finance has `option_chain` in its `supportedDataTypes` | TC-011 | Unit | Not Started |
-| 3.1 | Yahoo Finance `aliases`: `["yahoo","yfinance"]` | TC-007 | Unit | Not Started |
-| 3.2 | Alpha Vantage `aliases`: `["alphavantage","alpha_vantage"]` | TC-009 | Unit | Not Started |
-| 3.3 | Finnhub `aliases`: `["finnhub"]` | TC-010 | Unit | Not Started |
-| 3.4 | `"yfinance"` is a valid alias for Yahoo Finance (cross-validation with `Validate`) | TC-012 | Unit | Not Started |
-| 4.4 | Other tools' `provider` descriptions reference `list_providers` | TC-014 | Unit | Not Started |
-| 5.1 | Missing API key → provider excluded from response | TC-005 | Unit | Not Started |
-| 5.2 | Provider explicitly disabled → excluded from response | TC-015 | Unit | Not Started |
-| 5.3 | Add API key + restart → new provider appears | TC-019 | Integration | Not Started |
-| 5.4 | Remove API key + restart → provider disappears | TC-019 | Integration | Not Started |
+| 4.1 | `tools/list` includes `list_providers` entry | TC-001 | Unit | Pass |
+| 4.2 | `list_providers` description is "Returns the list of stock data providers..." | TC-002 | Unit | Pass |
+| 4.3 | `list_providers` input schema accepts no arguments | TC-003 | Unit | Pass |
+| 1.1 | All 3 providers configured → response includes all 3 with complete metadata | TC-004, TC-017 | Unit, Integration | Pass |
+| 1.2 | Finnhub missing → only Yahoo and Alpha Vantage returned | TC-005, TC-018 | Unit, Integration | Pass |
+| 1.3 | No providers configured → `{"providers":[]}` | TC-006 | Unit | Pass |
+| 1.4 | Multiple invocations, unchanged config → identical results | TC-013 | Unit | Pass |
+| 2.1 | Yahoo Finance `supportedDataTypes` includes all 10 specified types | TC-008 | Unit | Pass |
+| 2.2 | Alpha Vantage `supportedDataTypes`: `["historical_prices","stock_info","news"]` | TC-009 | Unit | Pass |
+| 2.3 | Finnhub `supportedDataTypes`: `["historical_prices","stock_info","news","market_news"]` | TC-010 | Unit | Pass |
+| 2.4 | Only Yahoo Finance has `option_chain` in its `supportedDataTypes` | TC-011 | Unit | Pass |
+| 3.1 | Yahoo Finance `aliases`: `["yahoo","yfinance"]` | TC-007 | Unit | Pass |
+| 3.2 | Alpha Vantage `aliases`: `["alphavantage","alpha_vantage"]` | TC-009 | Unit | Pass |
+| 3.3 | Finnhub `aliases`: `["finnhub"]` | TC-010 | Unit | Pass |
+| 3.4 | `"yfinance"` is a valid alias for Yahoo Finance (cross-validation with `Validate`) | TC-012 | Unit | Pass |
+| 4.4 | Other tools' `provider` descriptions reference `list_providers` | TC-014 | Unit | Pass |
+| 5.1 | Missing API key → provider excluded from response | TC-005 | Unit | Pass |
+| 5.2 | Provider explicitly disabled → excluded from response | TC-015 | Unit | Pass |
+| 5.3 | Add API key + restart → new provider appears | TC-019 | Integration | Pass |
+| 5.4 | Remove API key + restart → provider disappears | TC-019 | Integration | Pass |
 
 **Coverage gap notice**: Scenarios 5.3 and 5.4 require server restart and configuration file mutation. They are not exercisable in unit tests. TC-019 covers both through a parametric integration test that constructs two server instances with differing provider sets and verifies each reflects its registered providers. No live credential mutation is needed.
 

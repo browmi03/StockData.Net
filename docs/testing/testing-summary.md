@@ -18,11 +18,11 @@
 
 ## Test Strategy Overview
 
-The StockData.Net project maintains **357 test methods** across three test projects (unit, integration, and MCP server layers) with **89.8% line coverage** and **60.3% branch coverage**. The testing strategy covers the full feature set: provider abstraction with HTTP security (Phase 1), circuit breaker and failover (Phase 2), news deduplication and aggregation (Phase 3), and smart symbol translation. All tests use the MSTest framework with Moq for mocking, following the `GivenCondition_WhenAction_ThenExpectedResult` naming convention defined in [coding standards](../coding-standards.md).
+The StockData.Net project maintains **516 total test methods** (501 passing, 15 skipped) across three test projects (unit, integration, and MCP server layers) with **89.8% line coverage** and **60.3% branch coverage**. The testing strategy covers the full feature set: provider abstraction with HTTP security (Phase 1), circuit breaker and failover (Phase 2), news deduplication and aggregation (Phase 3), and smart symbol translation. All tests use the MSTest framework with Moq for mocking, following the `GivenCondition_WhenAction_ThenExpectedResult` naming convention defined in [coding standards](../coding-standards/README.md).
 
 **Current Test Status:**
 
-- **Total Tests**: 473 passing, 9 skipped (100% pass rate on executed tests)
+- **Total Tests**: 501 passing, 15 skipped (100% pass rate on executed tests)
 - **Overall Line Coverage**: 89.8% (1215/1352 lines)
 - **Overall Branch Coverage**: 60.3% (497/824 branches)
 - **Test Projects**: StockData.Net.Tests, StockData.Net.McpServer.Tests, StockData.Net.IntegrationTests
@@ -319,7 +319,7 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 
 | Test File | Test Count | Component |
 | --- | --- | --- |
-| McpServerTests.cs | 45 | MCP tool definitions, params, routing |
+| McpServerTests.cs | 121 | MCP tool definitions, params, routing |
 | YahooFinanceClientTests.cs | 39 | HTTP client, cookie/crumb auth |
 | YahooFinanceProviderTests.cs | 36 | Provider contract (10 methods) |
 | AlphaVantageProviderTests.cs | 25 | Provider contract |
@@ -338,8 +338,8 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 | NewsDeduplicatorTests.cs | 6 | Deduplication algorithm |
 | NewsAggregationRouterTests.cs | 5 | Multi-provider aggregation |
 | NewsAggregationMcpServerTests.cs | 1 | MCP + aggregation E2E |
-| Integration tests (2 provider files) | 6 | Alpha Vantage, Finnhub live API |
-| **Total** | **357** | |
+| Integration tests (2 provider files) | 42 | Alpha Vantage, Finnhub live API (27 passed, 15 skipped) |
+| **Total** | **516** | |
 
 ### Phase Completion Status
 
@@ -359,7 +359,7 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 
 | Gate | Threshold | Current | Status |
 | --- | --- | --- | --- |
-| All Tests Pass | 100% | 473/473 executed | ✅ Pass |
+| All Tests Pass | 100% | 501/501 executed | ✅ Pass |
 | Line Coverage | ≥ 85% | 89.8% | ✅ Pass |
 | Branch Coverage | ≥ 55% | 60.3% | ✅ Pass |
 | Critical Components | ≥ 85% line | 83.5%–100% | ✅ Pass |
@@ -374,4 +374,4 @@ Test cases are organized by component. Each test case maps to one or more GWT sc
 - Feature Specification: [Smart Symbol Translation](../features/symbol-translation.md)
 - Architecture Overview: [Stock Data Aggregation Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
 - Security Design: [Security Summary](../security/security-summary.md)
-- Coding Standards: [Testing Standards section](../coding-standards.md)
+- Coding Standards: [Testing Standards section](../coding-standards/README.md)

@@ -1,5 +1,7 @@
 # Provider Selection User Guide
 
+- **Status**: Approved
+
 ## Overview
 
 The Provider Selection feature allows you to explicitly choose which financial data provider fulfills your requests through natural language. Instead of relying on automatic provider selection, you can say things like "get yahoo data on AAPL" or "show me finnhub prices for TSLA" to control your data source.
@@ -88,8 +90,7 @@ Every response includes metadata identifying the provider:
 | Field | Description | Example Values |
 |-------|-------------|----------------|
 | `serviceKey` | Provider identifier | `"yahoo"`, `"alphavantage"`, `"finnhub"` |
-| `tier` | Service tier | `"free"`, `"premium"` |
-| `rateLimitRemaining` | Remaining API quota (if available) | `450`, `null` |
+| `tier` | Service tier | `"free"`, `"paid"` |
 
 ### Example Response
 
@@ -102,7 +103,6 @@ Stock data for AAPL:
 [Metadata]
 Service: yahoo
 Tier: free
-Rate Limit Remaining: 1998
 ```
 
 ---
@@ -201,7 +201,7 @@ Response includes: serviceKey: "yahoo" (or whatever default is configured)
 Monitor the `tier` metadata to track which service levels you're using:
 
 - `tier: "free"` — No cost implications
-- `tier: "premium"` — May count against paid API quotas
+- `tier: "paid"` — May count against paid API quotas
 
 ### Rate Limiting
 
