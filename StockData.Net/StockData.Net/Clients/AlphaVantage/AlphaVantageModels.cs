@@ -5,6 +5,9 @@ namespace StockData.Net.Clients.AlphaVantage;
 public record AlphaVantageQuote(double Price, double Change, double PercentChange, long Timestamp);
 public record AlphaVantageCandle(long Timestamp, double Open, double High, double Low, double Close, long Volume);
 public record AlphaVantageNewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers);
+public record NewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers);
+public record StockActionItem(DateTime Date, string ActionType, decimal Value, decimal? Numerator, decimal? Denominator);
+public record StockActionsResult(IReadOnlyList<StockActionItem> Dividends, IReadOnlyList<StockActionItem> Splits);
 
 internal sealed class AlphaVantageQuoteResponse
 {
@@ -100,4 +103,46 @@ internal sealed class AlphaVantageTickerSentiment
 {
     [JsonPropertyName("ticker")]
     public string? Ticker { get; init; }
+}
+
+internal sealed class AlphaVantageDividendsResponse
+{
+    [JsonPropertyName("data")]
+    public List<AlphaVantageDividendEntry>? Data { get; init; }
+
+    [JsonPropertyName("Note")]
+    public string? Note { get; init; }
+
+    [JsonPropertyName("Information")]
+    public string? Information { get; init; }
+}
+
+internal sealed class AlphaVantageDividendEntry
+{
+    [JsonPropertyName("ex_dividend_date")]
+    public string? ExDividendDate { get; init; }
+
+    [JsonPropertyName("dividend_amount")]
+    public string? DividendAmount { get; init; }
+}
+
+internal sealed class AlphaVantageSplitsResponse
+{
+    [JsonPropertyName("data")]
+    public List<AlphaVantageSplitEntry>? Data { get; init; }
+
+    [JsonPropertyName("Note")]
+    public string? Note { get; init; }
+
+    [JsonPropertyName("Information")]
+    public string? Information { get; init; }
+}
+
+internal sealed class AlphaVantageSplitEntry
+{
+    [JsonPropertyName("effective_date")]
+    public string? EffectiveDate { get; init; }
+
+    [JsonPropertyName("split_coefficient")]
+    public string? SplitCoefficient { get; init; }
 }

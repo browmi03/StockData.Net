@@ -1,0 +1,9 @@
+title = "StockData.Net Gitleaks Configuration"
+
+[allowlist]
+description = "Intentional fake credentials in test files used to verify sanitizer and security behavior. These are not real secrets."
+paths = [
+    '''StockData\.Net\.McpServer\.Tests/''',
+    '''StockData\.Net\.Tests/''',
+    '''StockData\.Net\.IntegrationTests/'''
+]

@@ -110,6 +110,13 @@ public interface IStockDataProvider
     Task<string> GetRecommendationsAsync(string ticker, RecommendationType recommendationType, int monthsBack = 12, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the supported data types for the configured provider tier.
+    /// </summary>
+    /// <param name="tier">Configured tier value (free or paid)</param>
+    /// <returns>Set of supported data type keys in snake_case format</returns>
+    IReadOnlySet<string> GetSupportedDataTypes(string tier);
+
+    /// <summary>
     /// Gets health status of the provider
     /// </summary>
     /// <returns>True if provider is healthy and responsive</returns>

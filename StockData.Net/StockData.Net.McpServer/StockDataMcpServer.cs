@@ -36,7 +36,10 @@ public class StockDataMcpServer
         ILogger<StockDataMcpServer>? logger = null)
     {
         _router = router;
-        _providerValidator = new ProviderSelectionValidator(configuration, _router.GetRegisteredProviderIds());
+        _providerValidator = new ProviderSelectionValidator(
+            configuration,
+            _router.GetRegisteredProviderIds(),
+            _router.GetRegisteredProviders());
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -97,6 +100,19 @@ public class StockDataMcpServer
         }
         catch (Exception ex)
         {
+            if (ex is ProviderFailoverException providerFailoverException)
+            {
+                return new McpResponse
+                {
+                    Id = request.Id,
+                    Error = new McpError
+                    {
+                        Code = -32603,
+                        Message = FormatInvestorFriendlyMessage(providerFailoverException)
+                    }
+                };
+            }
+
             var providerAware = ex as ProviderAwareException;
             return new McpResponse
             {
@@ -115,6 +131,63 @@ public class StockDataMcpServer
                 }
             };
         }
+    }
+
+    internal static string FormatInvestorFriendlyMessage(ProviderFailoverException ex)
+    {
+        var safeDataType = SensitiveDataSanitizer.Sanitize(ex.DataType);
+        var attemptedProviders = ex.AttemptedProviders
+            .Where(provider => !string.IsNullOrWhiteSpace(provider))
+            .Select(provider => SensitiveDataSanitizer.Sanitize(provider))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var messageParts = new List<string>
+        {
+            $"Unable to retrieve {safeDataType} data from the configured providers."
+        };
+
+        if (attemptedProviders.Count > 0)
+        {
+            messageParts.Add($"Providers tried: {string.Join(", ", attemptedProviders)}.");
+        }
+
+        if (ex.TierFailures.Count > 0)
+        {
+            var tierDetails = ex.TierFailures
+                .Select(failure =>
+                {
+                    var providerName = SensitiveDataSanitizer.Sanitize(failure.ProviderName);
+                    var dataType = SensitiveDataSanitizer.Sanitize(failure.DataType);
+                    var configuredTier = SensitiveDataSanitizer.Sanitize(failure.ConfiguredTier);
+                    var upgradeUrl = SensitiveDataSanitizer.Sanitize(failure.UpgradeUrl);
+                    if (string.IsNullOrWhiteSpace(upgradeUrl))
+                    {
+                        return $"{providerName}: {dataType} is not available on the {configuredTier} tier.";
+                    }
+
+                    return $"{providerName}: {dataType} is not available on the {configuredTier} tier. Upgrade: {upgradeUrl}.";
+                })
+                .ToArray();
+
+            messageParts.Add($"Tier limitations: {string.Join(" ", tierDetails)}");
+        }
+
+        if (ex.ProviderErrors.Count > 0)
+        {
+            var errorDetails = ex.ProviderErrors
+                .Select(kvp =>
+                {
+                    var provider = SensitiveDataSanitizer.Sanitize(kvp.Key);
+                    var safeReason = SensitiveDataSanitizer.Sanitize(kvp.Value.Message);
+                    return $"{provider}: {safeReason}";
+                })
+                .ToArray();
+
+            messageParts.Add($"Other provider issues: {string.Join(" ", errorDetails)}");
+        }
+
+        return string.Join(" ", messageParts);
     }
 
     private object HandleInitialize()
@@ -409,6 +482,11 @@ public class StockDataMcpServer
         }
         catch (Exception ex)
         {
+            if (ex is ProviderFailoverException)
+            {
+                throw;
+            }
+
             var providerId = validation.ResolvedProviderId;
             if (!string.IsNullOrWhiteSpace(providerId))
             {

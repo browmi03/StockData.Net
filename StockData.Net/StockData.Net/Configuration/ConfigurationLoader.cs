@@ -448,8 +448,7 @@ public class ConfigurationLoader : IConfigurationLoader
         var allowedTiers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "free",
-            "premium",
-            "enterprise"
+            "paid"
         };
 
         foreach (var provider in config.Providers)
@@ -462,8 +461,8 @@ public class ConfigurationLoader : IConfigurationLoader
 
             if (!allowedTiers.Contains(provider.Tier))
             {
-                throw new InvalidOperationException(
-                    $"Provider tier must be 'free', 'premium', or 'enterprise', got: '{provider.Tier}'");
+                throw new ConfigurationException(
+                    $"Provider '{provider.Id}' has invalid tier value '{provider.Tier}'. Valid values are 'free' or 'paid'.");
             }
         }
     }

@@ -115,45 +115,83 @@ public class AlphaVantageProviderTests
     }
 
     [TestMethod]
-    public async Task GetMarketNewsAsync_Always_ThrowsNotSupportedException()
+    public async Task GetMarketNewsAsync_WhenClientReturnsNews_FormatsResponse()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetMarketNewsAsync());
+        _client.GetMarketNewsAsync(Arg.Any<CancellationToken>())
+            .Returns([
+                new NewsItem("Market rally", "Reuters", "https://example.com/m1", "Summary", 1_700_000_000, ["SPY", "QQQ"])
+            ]);
+
+        var result = await _provider.GetMarketNewsAsync();
+
+        StringAssert.Contains(result, "Title: Market rally");
+        StringAssert.Contains(result, "Publisher: Reuters");
     }
 
     [TestMethod]
-    public async Task GetStockActionsAsync_Always_ThrowsNotSupportedException()
+    public async Task GetStockActionsAsync_WhenClientReturnsActions_SerializesPayload()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetStockActionsAsync("AAPL"));
+        _client.GetStockActionsAsync("AAPL", Arg.Any<CancellationToken>())
+            .Returns(new StockActionsResult(
+                [new StockActionItem(new DateTime(2026, 1, 10), "dividend", 0.35m, null, null)],
+                [new StockActionItem(new DateTime(2025, 8, 10), "split", 2m, 2m, 1m)]));
+
+        var result = await _provider.GetStockActionsAsync("AAPL");
+
+        StringAssert.Contains(result, "dividends");
+        StringAssert.Contains(result, "stockSplits");
+        StringAssert.Contains(result, "sourceProvider");
     }
 
     [TestMethod]
-    public async Task GetFinancialStatementAsync_Always_ThrowsNotSupportedException()
+    public async Task GetFinancialStatementAsync_Always_ThrowsTierAwareNotSupportedException()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetFinancialStatementAsync("AAPL", FinancialStatementType.BalanceSheet));
+        var ex = await Assert.ThrowsExactlyAsync<TierAwareNotSupportedException>(() => _provider.GetFinancialStatementAsync("AAPL", FinancialStatementType.BalanceSheet));
+        Assert.AreEqual("alphavantage", ex.ProviderId);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
-    public async Task GetHolderInfoAsync_Always_ThrowsNotSupportedException()
+    public async Task GetHolderInfoAsync_Always_ThrowsTierAwareNotSupportedException()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetHolderInfoAsync("AAPL", HolderType.MajorHolders));
+        var ex = await Assert.ThrowsExactlyAsync<TierAwareNotSupportedException>(() => _provider.GetHolderInfoAsync("AAPL", HolderType.MajorHolders));
+        Assert.AreEqual("alphavantage", ex.ProviderId);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
-    public async Task GetOptionExpirationDatesAsync_Always_ThrowsNotSupportedException()
+    public async Task GetOptionExpirationDatesAsync_Always_ThrowsTierAwareNotSupportedException()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetOptionExpirationDatesAsync("AAPL"));
+        var ex = await Assert.ThrowsExactlyAsync<TierAwareNotSupportedException>(() => _provider.GetOptionExpirationDatesAsync("AAPL"));
+        Assert.AreEqual("alphavantage", ex.ProviderId);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
-    public async Task GetOptionChainAsync_Always_ThrowsNotSupportedException()
+    public async Task GetOptionChainAsync_Always_ThrowsTierAwareNotSupportedException()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetOptionChainAsync("AAPL", "2026-12-18", OptionType.Calls));
+        var ex = await Assert.ThrowsExactlyAsync<TierAwareNotSupportedException>(() => _provider.GetOptionChainAsync("AAPL", "2026-12-18", OptionType.Calls));
+        Assert.AreEqual("alphavantage", ex.ProviderId);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
     }
 
     [TestMethod]
-    public async Task GetRecommendationsAsync_Always_ThrowsNotSupportedException()
+    public async Task GetRecommendationsAsync_Always_ThrowsTierAwareNotSupportedException()
     {
-        await Assert.ThrowsExactlyAsync<NotSupportedException>(() => _provider.GetRecommendationsAsync("AAPL", RecommendationType.Recommendations, 12));
+        var ex = await Assert.ThrowsExactlyAsync<TierAwareNotSupportedException>(() => _provider.GetRecommendationsAsync("AAPL", RecommendationType.Recommendations, 12));
+        Assert.AreEqual("alphavantage", ex.ProviderId);
+        Assert.IsFalse(ex.AvailableOnPaidTier);
+    }
+
+    [TestMethod]
+    public void GetSupportedDataTypes_ForAnyTier_ReturnsExpectedSet()
+    {
+        var freeSet = _provider.GetSupportedDataTypes("free");
+        var paidSet = _provider.GetSupportedDataTypes("paid");
+
+        CollectionAssert.AreEquivalent(freeSet.ToArray(), paidSet.ToArray());
+        CollectionAssert.Contains(freeSet.ToArray(), "market_news");
+        CollectionAssert.Contains(freeSet.ToArray(), "stock_actions");
     }
 
     [TestMethod]

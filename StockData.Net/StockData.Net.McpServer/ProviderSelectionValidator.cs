@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using StockData.Net.Configuration;
 using StockData.Net.McpServer.Models;
+using StockData.Net.Providers;
 
 namespace StockData.Net.McpServer;
 
@@ -9,55 +10,41 @@ public sealed class ProviderSelectionValidator
     private static readonly Regex AllowedProviderPattern =
         new("^[a-zA-Z0-9_ ]{1,50}$", RegexOptions.Compiled, TimeSpan.FromMilliseconds(50));
 
-    private static readonly Dictionary<string, (string CanonicalId, string DisplayName, string[] SupportedDataTypes)> ProviderMetadata =
+    private static readonly Dictionary<string, (string CanonicalId, string DisplayName)> ProviderMetadata =
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["yahoo_finance"] = (
                 "yahoo",
-                "Yahoo Finance",
-                new[]
-                {
-                    "historical_prices",
-                    "stock_info",
-                    "news",
-                    "market_news",
-                    "stock_actions",
-                    "financial_statement",
-                    "holder_info",
-                    "option_expiration_dates",
-                    "option_chain",
-                    "recommendations"
-                }),
+                "Yahoo Finance"),
             ["alphavantage"] = (
                 "alphavantage",
-                "Alpha Vantage",
-                new[]
-                {
-                    "historical_prices",
-                    "stock_info",
-                    "news"
-                }),
+                "Alpha Vantage"),
             ["finnhub"] = (
                 "finnhub",
-                "Finnhub",
-                new[]
-                {
-                    "historical_prices",
-                    "stock_info",
-                    "news",
-                    "market_news"
-                })
+                "Finnhub")
         };
 
     private readonly McpConfiguration _configuration;
     private readonly HashSet<string> _registeredProviders;
     private readonly Dictionary<string, string> _aliases;
+    private readonly Dictionary<string, IStockDataProvider> _providersById;
 
     public ProviderSelectionValidator(McpConfiguration configuration, IEnumerable<string> registeredProviders)
+        : this(configuration, registeredProviders, null)
+    {
+    }
+
+    public ProviderSelectionValidator(
+        McpConfiguration configuration,
+        IEnumerable<string> registeredProviders,
+        IEnumerable<IStockDataProvider>? providers)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _registeredProviders = new HashSet<string>(registeredProviders ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
         _aliases = BuildAliasMap(configuration);
+        _providersById = (providers ?? Enumerable.Empty<IStockDataProvider>())
+            .GroupBy(provider => provider.ProviderId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
     }
 
     public ProviderValidationResult Validate(string? provider)
@@ -146,7 +133,10 @@ public sealed class ProviderSelectionValidator
             {
                 var metadata = ProviderMetadata.TryGetValue(providerId, out var providerMetadata)
                     ? providerMetadata
-                    : (CanonicalId: providerId, DisplayName: providerId, SupportedDataTypes: Array.Empty<string>());
+                    : (CanonicalId: providerId, DisplayName: providerId);
+
+                var tier = GetTierForProviderId(providerId);
+                var supportedDataTypes = GetSupportedDataTypes(providerId, tier);
 
                 var aliases = _aliases
                     .Where(kvp => string.Equals(kvp.Value, providerId, StringComparison.OrdinalIgnoreCase))
@@ -161,7 +151,7 @@ public sealed class ProviderSelectionValidator
                     Id = metadata.CanonicalId,
                     DisplayName = metadata.DisplayName,
                     Aliases = aliases,
-                    SupportedDataTypes = metadata.SupportedDataTypes
+                    SupportedDataTypes = supportedDataTypes
                 };
             })
             .OrderBy(provider => provider.Id, StringComparer.OrdinalIgnoreCase)
@@ -198,6 +188,64 @@ public sealed class ProviderSelectionValidator
         }
 
         return aliases;
+    }
+
+    private string[] GetSupportedDataTypes(string providerId, string tier)
+    {
+        if (_providersById.TryGetValue(providerId, out var provider))
+        {
+            return provider.GetSupportedDataTypes(tier)
+                .OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+        }
+
+        // Fallback for tests/legacy call sites that only pass provider IDs.
+        IEnumerable<string> fallbackCapabilities = providerId.ToLowerInvariant() switch
+        {
+            "yahoo_finance" => new[]
+            {
+                "historical_prices",
+                "stock_info",
+                "news",
+                "market_news",
+                "stock_actions",
+                "financial_statement",
+                "holder_info",
+                "option_expiration_dates",
+                "option_chain",
+                "recommendations"
+            },
+            "finnhub" => string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase)
+                ? new[]
+                {
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "recommendations",
+                    "historical_prices",
+                    "stock_actions"
+                }
+                : new[]
+                {
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "recommendations"
+                },
+            "alphavantage" => new[]
+            {
+                "historical_prices",
+                "stock_info",
+                "news",
+                "market_news",
+                "stock_actions"
+            },
+            _ => Array.Empty<string>()
+        };
+
+        return fallbackCapabilities
+            .OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 }
 

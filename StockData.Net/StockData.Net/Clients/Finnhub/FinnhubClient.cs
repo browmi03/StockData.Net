@@ -236,6 +236,107 @@ public sealed class FinnhubClient : IFinnhubClient
         }
     }
 
+    public async Task<IEnumerable<MarketNewsItem>> GetMarketNewsAsync(string category, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            throw new ArgumentException("Category cannot be empty or whitespace.", nameof(category));
+        }
+
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var encodedCategory = Uri.EscapeDataString(category.Trim().ToLowerInvariant());
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+            var requestUri = $"news?category={encodedCategory}&token={apiKey}";
+
+            using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return [];
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var payload = await JsonSerializer.DeserializeAsync<List<FinnhubMarketNewsResponse>>(stream, JsonOptions, cancellationToken);
+            if (payload is null || payload.Count == 0)
+            {
+                return [];
+            }
+
+            return payload.Select(entry => new MarketNewsItem(
+                Id: entry.Id,
+                Category: entry.Category ?? string.Empty,
+                Datetime: NormalizeUnixSeconds(entry.Datetime),
+                Headline: entry.Headline ?? string.Empty,
+                Image: entry.Image ?? string.Empty,
+                Related: entry.Related ?? string.Empty,
+                Source: entry.Source ?? string.Empty,
+                Summary: entry.Summary ?? string.Empty,
+                Url: entry.Url ?? string.Empty));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"Finnhub market news request failed: {sanitizedMessage}", ex);
+        }
+    }
+
+    public async Task<IEnumerable<RecommendationTrend>> GetRecommendationTrendsAsync(
+        string symbol,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateSymbol(symbol);
+
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var encodedSymbol = Uri.EscapeDataString(symbol.Trim().ToUpperInvariant());
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+            var requestUri = $"stock/recommendation?symbol={encodedSymbol}&token={apiKey}";
+
+            using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return [];
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var payload = await JsonSerializer.DeserializeAsync<List<FinnhubRecommendationResponse>>(stream, JsonOptions, cancellationToken);
+            if (payload is null || payload.Count == 0)
+            {
+                return [];
+            }
+
+            return payload.Select(entry => new RecommendationTrend(
+                Buy: entry.Buy,
+                Hold: entry.Hold,
+                Period: entry.Period ?? string.Empty,
+                Sell: entry.Sell,
+                StrongBuy: entry.StrongBuy,
+                StrongSell: entry.StrongSell,
+                Symbol: entry.Symbol ?? symbol.ToUpperInvariant()));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"Finnhub recommendation request failed: {sanitizedMessage}", ex);
+        }
+    }
+
     private async Task AcquireRateLimitPermitAsync(CancellationToken cancellationToken)
     {
         using var lease = await _rateLimiter.AcquireAsync(1, cancellationToken);

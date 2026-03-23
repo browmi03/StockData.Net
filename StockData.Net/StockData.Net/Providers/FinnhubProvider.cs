@@ -11,6 +11,24 @@ namespace StockData.Net.Providers;
 /// </summary>
 public sealed class FinnhubProvider : IStockDataProvider
 {
+    private static readonly IReadOnlySet<string> FreeCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "stock_info",
+        "news",
+        "market_news",
+        "recommendations"
+    };
+
+    private static readonly IReadOnlySet<string> PaidCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "stock_info",
+        "news",
+        "market_news",
+        "recommendations",
+        "historical_prices",
+        "stock_actions"
+    };
+
     private readonly StockData.Net.Clients.Finnhub.IFinnhubClient _client;
     private readonly ILogger<FinnhubProvider> _logger;
 
@@ -83,9 +101,13 @@ public sealed class FinnhubProvider : IStockDataProvider
         }, nameof(GetNewsAsync));
     }
 
-    public Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
+    public async Task<string> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetMarketNewsAsync), availableOnPaidTier: false);
+        return await ExecuteSafelyAsync(async () =>
+        {
+            var items = await _client.GetMarketNewsAsync("general", cancellationToken);
+            return MapMarketNews(items);
+        }, nameof(GetMarketNewsAsync));
     }
 
     public Task<string> GetStockActionsAsync(string ticker, CancellationToken cancellationToken = default)
@@ -123,13 +145,37 @@ public sealed class FinnhubProvider : IStockDataProvider
         throw new TierAwareNotSupportedException(ProviderId, nameof(GetOptionChainAsync), availableOnPaidTier: false);
     }
 
-    public Task<string> GetRecommendationsAsync(
+    public async Task<string> GetRecommendationsAsync(
         string ticker,
         RecommendationType recommendationType,
         int monthsBack = 12,
         CancellationToken cancellationToken = default)
     {
-        throw new TierAwareNotSupportedException(ProviderId, nameof(GetRecommendationsAsync), availableOnPaidTier: false);
+        return await ExecuteSafelyAsync(async () =>
+        {
+            ValidateTicker(ticker);
+            var trends = await _client.GetRecommendationTrendsAsync(ticker, cancellationToken);
+            var payload = trends.Select(trend => new
+            {
+                trend.Symbol,
+                trend.Period,
+                trend.StrongBuy,
+                trend.Buy,
+                trend.Hold,
+                trend.Sell,
+                trend.StrongSell,
+                SourceProvider = ProviderId
+            });
+
+            return JsonSerializer.Serialize(payload);
+        }, nameof(GetRecommendationsAsync));
+    }
+
+    public IReadOnlySet<string> GetSupportedDataTypes(string tier)
+    {
+        return string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase)
+            ? PaidCapabilities
+            : FreeCapabilities;
     }
 
     public async Task<bool> GetHealthStatusAsync(CancellationToken cancellationToken = default)
@@ -206,6 +252,32 @@ public sealed class FinnhubProvider : IStockDataProvider
             var relatedTickers = item.RelatedTickers.Count > 0
                 ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
                 : string.Empty;
+
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+        }
+
+        return string.Join("\n\n", blocks);
+    }
+
+    private static string MapMarketNews(IEnumerable<MarketNewsItem> items)
+    {
+        var itemList = items.ToList();
+        if (itemList.Count == 0)
+        {
+            return "No market news found.";
+        }
+
+        var blocks = new List<string>(itemList.Count);
+
+        foreach (var item in itemList)
+        {
+            var published = item.Datetime > 0
+                ? DateTimeOffset.FromUnixTimeSeconds(item.Datetime).UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")
+                : "Unknown";
+
+            var relatedTickers = string.IsNullOrWhiteSpace(item.Related)
+                ? string.Empty
+                : $"\nRelated Tickers: {item.Related}";
 
             blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
         }

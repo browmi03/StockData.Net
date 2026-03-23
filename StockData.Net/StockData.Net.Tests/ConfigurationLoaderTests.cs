@@ -313,7 +313,7 @@ public class ConfigurationLoaderTests
     // Configuration Validation Tests
 
     [TestMethod]
-    public async Task LoadConfigurationAsync_WithInvalidProviderTier_ThrowsRequiredErrorMessage()
+    public async Task LoadConfigurationAsync_WithInvalidProviderTier_ThrowsConfigurationException()
     {
         // Arrange
         var configPath = Path.Combine(_testConfigDirectory, "invalid_tier_config.json");
@@ -355,23 +355,48 @@ public class ConfigurationLoaderTests
         }";
         await File.WriteAllTextAsync(configPath, configJson);
 
-        // Act
-        InvalidOperationException exception;
-        try
-        {
-            await _loader.LoadConfigurationAsync(configPath);
-            Assert.Fail("Expected InvalidOperationException was not thrown.");
-            return;
-        }
-        catch (InvalidOperationException ex)
-        {
-            exception = ex;
-        }
+        var exception = await AssertThrowsAsync<ConfigurationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
 
-        // Assert
-        Assert.AreEqual(
-            "Provider tier must be 'free', 'premium', or 'enterprise', got: 'gold'",
-            exception.Message);
+        StringAssert.Contains(exception.Message, "test_provider");
+        StringAssert.Contains(exception.Message, "gold");
+    }
+
+    [TestMethod]
+    [DataRow("premium")]
+    [DataRow("enterprise")]
+    public async Task GivenProviderTierIsLegacyValue_WhenLoadingConfiguration_ThenConfigurationExceptionThrown(string invalidTier)
+    {
+        var configPath = Path.Combine(_testConfigDirectory, $"invalid_tier_{invalidTier}.json");
+        var configJson = $@"{{
+            ""version"": ""1.0"",
+            ""providers"": [
+                {{
+                    ""id"": ""finnhub"",
+                    ""type"": ""FinnhubProvider"",
+                    ""enabled"": true,
+                    ""priority"": 1,
+                    ""tier"": ""{invalidTier}"",
+                    ""settings"": {{}},
+                    ""healthCheck"": {{
+                        ""enabled"": true,
+                        ""intervalSeconds"": 300,
+                        ""timeoutSeconds"": 10
+                    }}
+                }}
+            ],
+            ""routing"": {{
+                ""defaultStrategy"": ""PrimaryWithFailover"",
+                ""dataTypeRouting"": {{}}
+            }}
+        }}";
+        await File.WriteAllTextAsync(configPath, configJson);
+
+        var exception = await AssertThrowsAsync<ConfigurationException>(async () =>
+            await _loader.LoadConfigurationAsync(configPath));
+
+        StringAssert.Contains(exception.Message, "finnhub");
+        StringAssert.Contains(exception.Message, invalidTier);
     }
 
     [TestMethod]

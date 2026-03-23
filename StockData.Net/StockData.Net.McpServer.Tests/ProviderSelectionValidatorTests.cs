@@ -92,4 +92,36 @@ public class ProviderSelectionValidatorTests
         Assert.IsNotNull(providers);
         Assert.IsEmpty(providers);
     }
+
+    [TestMethod]
+    public void GetAvailableProviders_WhenFinnhubTierIsFree_ExcludesHistoricalPricesAndStockActions()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var finnhub = config.Providers.First(p => string.Equals(p.Id, "finnhub", StringComparison.OrdinalIgnoreCase));
+        finnhub.Tier = "free";
+
+        var validator = new ProviderSelectionValidator(config, new[] { "finnhub" });
+
+        var providers = validator.GetAvailableProviders();
+        var listedFinnhub = providers.Single(p => string.Equals(p.Id, "finnhub", StringComparison.OrdinalIgnoreCase));
+
+        CollectionAssert.DoesNotContain(listedFinnhub.SupportedDataTypes, "historical_prices");
+        CollectionAssert.DoesNotContain(listedFinnhub.SupportedDataTypes, "stock_actions");
+    }
+
+    [TestMethod]
+    public void GetAvailableProviders_WhenFinnhubTierIsPaid_IncludesHistoricalPricesAndStockActions()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        var finnhub = config.Providers.First(p => string.Equals(p.Id, "finnhub", StringComparison.OrdinalIgnoreCase));
+        finnhub.Tier = "paid";
+
+        var validator = new ProviderSelectionValidator(config, new[] { "finnhub" });
+
+        var providers = validator.GetAvailableProviders();
+        var listedFinnhub = providers.Single(p => string.Equals(p.Id, "finnhub", StringComparison.OrdinalIgnoreCase));
+
+        CollectionAssert.Contains(listedFinnhub.SupportedDataTypes, "historical_prices");
+        CollectionAssert.Contains(listedFinnhub.SupportedDataTypes, "stock_actions");
+    }
 }

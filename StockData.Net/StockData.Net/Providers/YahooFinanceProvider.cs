@@ -8,6 +8,20 @@ namespace StockData.Net.Providers;
 /// </summary>
 public class YahooFinanceProvider : IStockDataProvider
 {
+    private static readonly IReadOnlySet<string> AllCapabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "historical_prices",
+        "stock_info",
+        "news",
+        "market_news",
+        "stock_actions",
+        "financial_statement",
+        "holder_info",
+        "option_expiration_dates",
+        "option_chain",
+        "recommendations"
+    };
+
     private readonly IYahooFinanceClient _client;
 
     public string ProviderId => "yahoo_finance";
@@ -76,6 +90,11 @@ public class YahooFinanceProvider : IStockDataProvider
     {
         ValidateTicker(ticker);
         return _client.GetRecommendationsAsync(ticker, recommendationType, monthsBack, cancellationToken);
+    }
+
+    public IReadOnlySet<string> GetSupportedDataTypes(string tier)
+    {
+        return AllCapabilities;
     }
 
     public async Task<bool> GetHealthStatusAsync(CancellationToken cancellationToken = default)

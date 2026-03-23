@@ -25,6 +25,20 @@ public class StockDataMcpServerTests
         _mockProvider = new Mock<IStockDataProvider>();
         _mockProvider.Setup(p => p.ProviderId).Returns("yahoo_finance");
         _mockProvider.Setup(p => p.ProviderName).Returns("Yahoo Finance");
+        _mockProvider.Setup(p => p.Version).Returns("1.0.0");
+        _mockProvider.Setup(p => p.GetSupportedDataTypes(It.IsAny<string>())).Returns(new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "historical_prices",
+            "stock_info",
+            "news",
+            "market_news",
+            "stock_actions",
+            "financial_statement",
+            "holder_info",
+            "option_expiration_dates",
+            "option_chain",
+            "recommendations"
+        });
         
         var config = new ConfigurationLoader().GetDefaultConfiguration();
         _router = new StockDataProviderRouter(config, new[] { _mockProvider.Object });
@@ -349,7 +363,7 @@ public class StockDataMcpServerTests
         CollectionAssert.Contains(aliases, "alpha_vantage");
 
         var supportedDataTypes = alphaVantage.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
-        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news" }, supportedDataTypes);
+        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news", "market_news", "stock_actions" }, supportedDataTypes);
     }
 
     [TestMethod]
@@ -366,7 +380,7 @@ public class StockDataMcpServerTests
         CollectionAssert.Contains(aliases, "finnhub");
 
         var supportedDataTypes = finnhub.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
-        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news", "market_news" }, supportedDataTypes);
+        CollectionAssert.AreEquivalent(new[] { "stock_info", "news", "market_news", "recommendations" }, supportedDataTypes);
     }
 
     [TestMethod]
@@ -1576,6 +1590,108 @@ public class StockDataMcpServerTests
         _mockProvider.Verify(p => p.GetRecommendationsAsync("TEST", RecommendationType.Recommendations, 12, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_DoesNotIncludeRawExceptionData()
+    {
+        var failover = new ProviderFailoverException(
+            "StockInfo",
+            new Dictionary<string, Exception>
+            {
+                ["finnhub"] = new InvalidOperationException("Unhandled exception at System.Service call in C:\\temp\\server.cs:42 apikey=SECRETVALUE123 ---")
+            },
+            new List<string> { "finnhub" },
+            Array.Empty<TierFailureDetail>());
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        Assert.IsFalse(message.Contains("at ", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains(" in ", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("---", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("apikey=", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("token=", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_WhenSensitiveApiKeyPresent_DoesNotLeakKeyValue()
+    {
+        var failover = new ProviderFailoverException(
+            "StockInfo",
+            new Dictionary<string, Exception>
+            {
+                ["finnhub"] = new InvalidOperationException("request failed apikey=SECRETVALUE123"),
+                ["alphavantage"] = new InvalidOperationException("request failed token=SECRETVALUE123")
+            },
+            new List<string> { "finnhub", "alphavantage" },
+            Array.Empty<TierFailureDetail>());
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        Assert.IsFalse(message.Contains("SECRETVALUE123", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_WhenStackTraceFragmentsPresent_DoesNotIncludeThem()
+    {
+        var failover = new ProviderFailoverException(
+            "StockInfo",
+            new Dictionary<string, Exception>
+            {
+                ["finnhub"] = new InvalidOperationException("at System.Net.Http.HttpClient.SendAsync()\n   at StockData.Net.Clients.Finnhub.FinnhubClient.GetQuoteAsync()")
+            },
+            new List<string> { "finnhub" },
+            Array.Empty<TierFailureDetail>());
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        Assert.IsFalse(message.Contains("at System.", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("at StockData.", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("\n   at ", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_WhenTierFailuresPresent_UsesProviderUpgradeUrlConstants()
+    {
+        var failover = new ProviderFailoverException(
+            "HistoricalPrices",
+            new Dictionary<string, Exception>(),
+            new List<string> { "finnhub", "alphavantage" },
+            new[]
+            {
+                new TierFailureDetail("Finnhub", "historical_prices", "free", ProviderUpgradeUrls.FinnhubPricing),
+                new TierFailureDetail("Alpha Vantage", "historical_prices", "free", ProviderUpgradeUrls.AlphaVantagePremium)
+            });
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        StringAssert.Contains(message, ProviderUpgradeUrls.FinnhubPricing);
+        StringAssert.Contains(message, ProviderUpgradeUrls.AlphaVantagePremium);
+    }
+
+    [TestMethod]
+    public void ProviderUpgradeUrls_ConstantsUseHttps()
+    {
+        Assert.IsTrue(ProviderUpgradeUrls.FinnhubPricing.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(ProviderUpgradeUrls.AlphaVantagePremium.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_SanitizesSensitiveExceptionContent()
+    {
+        var failover = new ProviderFailoverException(
+            "StockInfo",
+            new Dictionary<string, Exception>
+            {
+                ["finnhub"] = new InvalidOperationException("Auth failed for token SECRET98765VALUE")
+            },
+            new List<string> { "finnhub" },
+            Array.Empty<TierFailureDetail>());
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        Assert.IsFalse(message.Contains("SECRET98765VALUE", StringComparison.Ordinal));
+        StringAssert.Contains(message, "[REDACTED]");
+    }
+
     #endregion
 
     #region Helper Methods
@@ -1800,6 +1916,53 @@ public class StockDataMcpServerTests
         provider.Setup(p => p.ProviderId).Returns(providerId);
         provider.Setup(p => p.ProviderName).Returns(providerId);
         provider.Setup(p => p.Version).Returns("1.0.0");
+        provider.Setup(p => p.GetSupportedDataTypes(It.IsAny<string>())).Returns((string tier) =>
+        {
+            return providerId.ToLowerInvariant() switch
+            {
+                "yahoo_finance" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "stock_actions",
+                    "financial_statement",
+                    "holder_info",
+                    "option_expiration_dates",
+                    "option_chain",
+                    "recommendations"
+                },
+                "alphavantage" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "stock_actions"
+                },
+                "finnhub" when string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase) => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "recommendations",
+                    "historical_prices",
+                    "stock_actions"
+                },
+                "finnhub" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "stock_info",
+                    "news",
+                    "market_news",
+                    "recommendations"
+                },
+                _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "stock_info"
+                }
+            };
+        });
 
         provider
             .Setup(p => p.GetStockInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
