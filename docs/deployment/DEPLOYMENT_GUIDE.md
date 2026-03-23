@@ -9,7 +9,7 @@
 - **Security**: [Security Summary](../security/security-summary.md)
 - **Related Runbooks**: [Release Checklist](./RELEASE_CHECKLIST.md) · [GitHub Secrets Validation](./GITHUB_SECRETS_VALIDATION.md)
 - **Status**: Approved
-- **Last Updated**: 2026-03-09
+- **Last Updated**: 2026-03-22
 
 ---
 
@@ -59,6 +59,7 @@ This guide provides step-by-step instructions for deploying the binary and confi
 
    ```
    You should see `StockData.Net.McpServer.exe` in the directory.
+  The directory also contains `appsettings.json` (provider configuration) and `.env.example` (API key template).
 
 ### Step 2: Test the Binary
 
@@ -111,6 +112,31 @@ icacls "C:\Tools\StockData.Net\appsettings.json" /inheritance:r /grant:r "%USERN
 ```
 
 - Rotate paid API keys immediately if you suspect exposure.
+
+### Step 2.5b: Configure API Keys (Environment File)
+
+As an alternative to editing `appsettings.json` directly, you can use a `.env` file:
+
+1. **Copy the template:**
+
+   ```powershell
+   Copy-Item "C:\Tools\StockData.Net\.env.example" "C:\Tools\StockData.Net\.env"
+   ```
+
+1. **Edit `.env`** and fill in your API keys:
+
+   ```text
+   FINNHUB_API_KEY=your_real_finnhub_key
+   ALPHAVANTAGE_API_KEY=your_real_alphavantage_key
+   YAHOO_FINANCE_API_KEY=
+   ```
+
+1. The application loads `.env` automatically at startup. OS environment variables take precedence over `.env` values.
+
+**Security notes:**
+
+- Never commit or share your `.env` file.
+- Do not store the deployment folder in cloud-synced paths (OneDrive, Google Drive, Dropbox).
 
 ### Step 3: Configure VS Code
 
