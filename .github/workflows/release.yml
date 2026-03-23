@@ -144,9 +144,33 @@ jobs:
           -p:InformationalVersion="$VERSION+sha.${GITHUB_SHA::7}" \
           --output "$out_dir"
 
+        # Copy .env.example template into publish output
+        cp .env.example "$out_dir/.env.example"
+
         cd publish
         zip -r "StockData.Net.McpServer-${VERSION}-${rid}.zip" "StockData.Net.McpServer-${rid}"
         cd - > /dev/null
+
+    - name: Verify config templates in publish output
+      shell: bash
+      run: |
+        rid="win-x64"
+        out_dir="publish/StockData.Net.McpServer-${rid}"
+
+        missing=0
+        for f in appsettings.json .env.example; do
+          if [ ! -f "$out_dir/$f" ]; then
+            echo "::error::Missing required file in publish output: $f"
+            missing=1
+          else
+            echo "Found $out_dir/$f"
+          fi
+        done
+
+        if [ "$missing" -eq 1 ]; then
+          echo "::error::Release package is missing required configuration templates"
+          exit 1
+        fi
 
     - name: Upload published artifacts
       uses: actions/upload-artifact@v4
