@@ -7,6 +7,11 @@
   Related Issue: GitHub Issue #17
 -->
 
+## Document Info
+
+- **Status**: Complete
+- **Last Updated**: 2026-03-09
+
 ## Overview
 
 Fix VS Code MCP client-side error ("Cannot read properties of null (reading 'task')") when Finnhub provider throws `NotSupportedException`, implement tier-aware error messaging to distinguish free vs. paid API limitations, and rename the `get_yahoo_finance_news` MCP tool to the provider-agnostic `get_finance_news`.
@@ -95,16 +100,16 @@ Users affected include:
 
 ## Acceptance Criteria
 
-- [ ] **[Blocking]** `ClassifyError` method handles `NotSupportedException` and returns `ProviderErrorType.InvalidRequest` — Evidence: Unit test verifies NotSupportedException → InvalidRequest classification
-- [ ] **[Blocking]** Router throws immediately without failover when encountering `ProviderErrorType.InvalidRequest` — Evidence: Integration test confirms no failover attempts when NotSupportedException is thrown
-- [ ] **[Blocking]** Finnhub provider throws tier-aware NotSupportedException for operations unsupported on free tier — Evidence: Error messages include "on the free tier. This feature is available with a paid subscription."
-- [ ] **[Blocking]** Finnhub provider throws standard NotSupportedException for operations unsupported on all tiers — Evidence: Error messages do NOT include tier language for operations like GetOptionChainAsync
-- [ ] **[Blocking]** `get_historical_stock_prices` works reliably with Finnhub provider — Evidence: Integration test successfully retrieves historical data for valid ticker/date range
-- [ ] **[Blocking]** MCP tool renamed from `get_yahoo_finance_news` to `get_finance_news` — Evidence: `tools/list` response contains `get_finance_news` only
-- [ ] **[Blocking]** Tool description updated to reflect multi-provider support — Evidence: Description does not exclusively reference Yahoo Finance
-- [ ] **[Blocking]** VS Code client can parse error responses without generating "Cannot read properties of null" errors — Evidence: Manual testing with VS Code Copilot confirms proper error display
-- [ ] **[Non-blocking]** Code coverage for error handling paths remains ≥ 85% — Evidence: Coverage report shows ≥85% line coverage in StockDataProviderRouter and provider classes
-- [ ] **[Non-blocking]** All existing tests pass without modification — Evidence: CI/CD pipeline shows 443 tests passing (437 passed, 6 skipped)
+- [x] **[Blocking]** `ClassifyError` method handles `NotSupportedException` and returns `ProviderErrorType.InvalidRequest` — Evidence: Unit test verifies NotSupportedException → InvalidRequest classification
+- [x] **[Blocking]** Router throws immediately without failover when encountering `ProviderErrorType.InvalidRequest` — Evidence: Integration test confirms no failover attempts when NotSupportedException is thrown
+- [x] **[Blocking]** Finnhub provider throws tier-aware NotSupportedException for operations unsupported on free tier — Evidence: Error messages include "on the free tier. This feature is available with a paid subscription."
+- [x] **[Blocking]** Finnhub provider throws standard NotSupportedException for operations unsupported on all tiers — Evidence: Error messages do NOT include tier language for operations like GetOptionChainAsync
+- [x] **[Blocking]** `get_historical_stock_prices` works reliably with Finnhub provider — Evidence: Integration test successfully retrieves historical data for valid ticker/date range
+- [x] **[Blocking]** MCP tool renamed from `get_yahoo_finance_news` to `get_finance_news` — Evidence: `tools/list` response contains `get_finance_news` only
+- [x] **[Blocking]** Tool description updated to reflect multi-provider support — Evidence: Description does not exclusively reference Yahoo Finance
+- [x] **[Blocking]** VS Code client can parse error responses without generating "Cannot read properties of null" errors — Evidence: Manual testing with VS Code Copilot confirms proper error display
+- [x] **[Non-blocking]** Code coverage for error handling paths remains ≥ 85% — Evidence: Coverage report shows ≥85% line coverage in StockDataProviderRouter and provider classes
+- [x] **[Non-blocking]** All existing tests pass without modification — Evidence: CI/CD pipeline shows 443 tests passing (437 passed, 6 skipped)
 
 ## Out of Scope
 

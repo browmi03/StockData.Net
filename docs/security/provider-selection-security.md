@@ -5,7 +5,7 @@
 - **Feature Spec**: [provider-selection.md](../features/provider-selection.md)
 - **Architecture**: [stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)
 - **Baseline Security**: [security-summary.md](security-summary.md)
-- **Status**: Draft
+- **Status**: In Review
 - **Last Updated**: 2026-03-09
 
 ## Security Overview
@@ -116,7 +116,7 @@ This document defines the security architecture and controls for enabling explic
 - **Mitigations**:
   1. **Acceptable disclosure for local deployment**: In the current single-user local process model, the user *is* the system operator. Disclosing `serviceKey` and `tier` is an intended feature for transparency and cost tracking — not a vulnerability
   2. **No internal identifiers in `serviceKey`**: The `serviceKey` value must be a stable, user-facing label (e.g., `"yahoo"`, `"alphavantage"`, `"finnhub"`) — never an internal identifier, database key, or configuration path
-  3. **`tier` values are generic**: Tier values are limited to a controlled vocabulary (`"free"`, `"premium"`, `"enterprise"`). No commercial pricing, contract terms, or account identifiers are included
+  3. **`tier` values are generic**: Tier values are limited to a controlled vocabulary (`"free"`, `"paid"`). No commercial pricing, contract terms, or account identifiers are included
   4. **Network deployment caveat**: If the MCP server is ever exposed over a network transport, `serviceKey` and `tier` disclosure should be reviewed — consider making metadata opt-in or redactable
 - **Residual Risk**: **LOW** (intentional disclosure in current deployment model)
 
@@ -192,7 +192,7 @@ The `serviceKey` field in responses must:
 
 The `tier` field in responses must:
 
-- Contain only values from a controlled vocabulary: `"free"`, `"premium"`, `"enterprise"`
+- Contain only values from a controlled vocabulary: `"free"`, `"paid"`
 - Never contain pricing information, account identifiers, or contract terms
 - Be derived from a static configuration mapping per provider — not from the external API response
 
@@ -256,7 +256,7 @@ If the default provider configuration in `appsettings.json` is missing or refere
 | Data Field | Classification | Content Constraints | Disclosure Risk |
 | --- | --- | --- | --- |
 | `serviceKey` | Internal | Controlled vocabulary from provider whitelist | Low — public provider brand names |
-| `tier` | Internal | Controlled vocabulary: free, premium, enterprise | Low — general tier, no commercial detail |
+| `tier` | Internal | Controlled vocabulary: free, paid | Low — general tier, no commercial detail |
 | `rateLimitRemaining` | Internal | Integer count only | Low — reveals remaining quota |
 
 ### Data Flow
@@ -399,7 +399,7 @@ No new tooling required. Existing controls apply:
 ### TC-PS-SEC-06: `serviceKey` and `tier` Value Integrity
 
 - **Input**: Successful requests to each provider
-- **Expected**: `serviceKey` contains only `"yahoo"`, `"alphavantage"`, or `"finnhub"`. `tier` contains only `"free"`, `"premium"`, or `"enterprise"`. No other values appear
+- **Expected**: `serviceKey` contains only `"yahoo"`, `"alphavantage"`, or `"finnhub"`. `tier` contains only `"free"` or `"paid"`. No other values appear
 
 ### TC-PS-SEC-07: Error Message Sanitization
 
@@ -434,5 +434,5 @@ No new tooling required. Existing controls apply:
 - Feature Specification: [provider-selection.md](../features/provider-selection.md)
 - Architecture Overview: [stock-data-aggregation-canonical-architecture.md](../architecture/stock-data-aggregation-canonical-architecture.md)
 - Baseline Security: [security-summary.md](security-summary.md)
-- Error Handling Security: [issue-17-error-handling-security.md](issue-17-error-handling-security.md)
+- Error Handling Architecture: [issue-17-error-handling-architecture.md](../architecture/issue-17-error-handling-architecture.md)
 - Test Strategy: [testing-summary.md](../testing/testing-summary.md)

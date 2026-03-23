@@ -27,7 +27,7 @@ All critical security gaps from initial review have been resolved. Production de
 
 | Asset | Classification | Owner |
 | --- | --- | --- |
-| API Keys (Finnhub, Alpha Vantage, NewsAPI) | Confidential | DevOps/Security Team |
+| API Keys (Finnhub, Alpha Vantage) | Confidential | DevOps/Security Team |
 | User Stock Queries | Internal | End Users |
 | Cached Session Cookies | Internal | System Runtime |
 | News Article Aggregates | Public | System |
@@ -45,7 +45,7 @@ All critical security gaps from initial review have been resolved. Production de
 | --- | --- | --- |
 | Yahoo Finance API (HTTPS) | External | MITM, DoS, Data Integrity |
 | Alpha Vantage API (HTTPS) | External | MITM, Rate Limiting, API Key Compromise |
-| NewsAPI/Finnhub API (HTTPS) | External | Content Injection, DoS, Data Integrity |
+| Finnhub API (HTTPS) | External | Content Injection, DoS, Data Integrity |
 | MCP stdio Interface | Local | Configuration Tampering |
 | Configuration Files | Local | API Key Disclosure |
 
@@ -121,7 +121,7 @@ Yahoo Finance requires 2-step authentication handled transparently:
 
 ### API Key Authentication
 
-Other providers (Finnhub, Alpha Vantage, NewsAPI) use API key authentication via headers or query parameters, loaded from environment variables at startup.
+Other providers (Finnhub, Alpha Vantage) use API key authentication via headers or query parameters, loaded from environment variables at startup.
 
 ## Authorization
 
@@ -169,7 +169,7 @@ Other providers (Finnhub, Alpha Vantage, NewsAPI) use API key authentication via
 ### Environment Variable Pattern
 
 - Configuration supports template syntax `${VAR_NAME}` for secure substitution
-- Format validation per provider (Alpha Vantage: 16 char alphanumeric, NewsAPI: 32 char hex)
+- Format validation per provider (Alpha Vantage: 16 char alphanumeric)
 - Fail-fast validation on startup ensures misconfigurations detected immediately
 
 ### Secrets Redaction
@@ -202,7 +202,7 @@ All text validated as UTF-8; invalid sequences replaced with Unicode replacement
 
 ## API Security
 
-**Rate limiting**: Provider-specific (Yahoo: ~2000/hour, Alpha Vantage: 5/min, NewsAPI: 100/day)  
+**Rate limiting**: Provider-specific (Yahoo: ~2000/hour, Alpha Vantage: 5/min)  
 **Request size limits**: 10MB maximum response size  
 **CORS policy**: Not applicable (local stdio interface)  
 **API versioning**: Not applicable (direct provider integration)
@@ -222,7 +222,6 @@ All text validated as UTF-8; invalid sequences replaced with Unicode replacement
 
 - Yahoo Finance: ~2000 requests/hour (unofficial limit)
 - Alpha Vantage: 5 requests/minute, 500/day quota
-- NewsAPI: 100 requests/day quota
 - FMP: 250 requests/day quota
 
 **Deduplication Concurrency**: Max 3 simultaneous deduplication operations (semaphore)

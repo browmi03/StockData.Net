@@ -124,7 +124,7 @@ All successful responses now include metadata identifying the provider and tier:
 | Field | Type | Description | Example Values |
 | --- | --- | --- | --- |
 | `serviceKey` | string | Provider that fulfilled the request | `"yahoo"`, `"finnhub"`, `"alphavantage"` |
-| `tier` | string | Provider cost tier | `"free"`, `"premium"`, `"enterprise"` |
+| `tier` | string | Provider cost tier | `"free"`, `"paid"` |
 
 ### Validation Behavior at Startup
 
@@ -134,7 +134,7 @@ The MCP server validates provider selection configuration at startup:
 
 - ✅ All alias targets must reference valid provider IDs
 - ✅ All default provider values must reference enabled providers
-- ✅ Provider tier values must be `"free"`, `"premium"`, or `"enterprise"`
+- ✅ Provider tier values must be `"free"` or `"paid"`
 - ✅ Provider names must be alphanumeric with underscores (max 50 chars)
 
 **If validation fails**, the server logs an error and **exits** with a configuration error message.

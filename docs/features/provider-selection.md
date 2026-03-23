@@ -1,5 +1,9 @@
 # Feature: Provider Selection via Natural Language
 
+## Document Info
+
+- **Status**: Approved
+
 ## Overview
 
 Enable users to explicitly select financial data providers through natural language requests (e.g., "get yahoo data on AAPL") while maintaining a seamless conversational interface. The system will interpret provider intent from user requests, apply that selection to all data operations, return metadata identifying which service fulfilled the request, and provide clear error feedback when invalid providers are specified.
@@ -52,11 +56,11 @@ Currently, the system abstracts provider selection completely, giving users no w
 
 ### User Story 5: As a financial analyst, I want visibility into provider tier and cost implications so that I can make informed decisions about data source selection
 
-> 5.1 Given any successful data request, when the system returns results, then the response includes a `tier` field indicating the service tier (e.g., `"tier": "free"` or `"tier": "premium"`)
+> 5.1 Given any successful data request, when the system returns results, then the response includes a `tier` field indicating the service tier (e.g., `"tier": "free"` or `"tier": "paid"`)
 >
 > 5.2 Given a provider has rate limits or cost implications, when the system returns results, then the response metadata includes relevant cost indicators (e.g., `"rateLimitRemaining": 450`)
 >
-> 5.3 Given I explicitly select a premium-tier provider, when the system returns results, then the tier metadata clearly indicates the cost tier (e.g., `"tier": "premium"`)
+> 5.3 Given I explicitly select a paid-tier provider, when the system returns results, then the tier metadata clearly indicates the cost tier (e.g., `"tier": "paid"`)
 
 ### User Story 6: As a system administrator, I want provider selection to bypass fallback chains so that explicit provider requests have predictable, transparent behavior
 
@@ -75,7 +79,7 @@ Currently, the system abstracts provider selection completely, giving users no w
 3. The system shall validate provider names at runtime before attempting data retrieval
 4. The system shall return a clear error message when an invalid or unavailable provider is specified
 5. The system shall include a `serviceKey` field in all response metadata identifying which provider fulfilled the request
-6. The system shall include a `tier` field in response metadata indicating the service tier (free, premium, etc.)
+6. The system shall include a `tier` field in response metadata indicating the service tier (free, paid)
 7. The system shall use the default provider configured in `appsettings.json` when no explicit provider is specified
 8. The system shall bypass fallback chains and circuit breaker logic when a provider is explicitly selected
 9. The system shall return provider-specific errors without automatic failover when an explicitly selected provider fails
@@ -101,7 +105,7 @@ Currently, the system abstracts provider selection completely, giving users no w
 - [ ] **[Blocking]** Default provider configuration from `appsettings.json` is used when no provider is specified — Evidence: Integration tests confirm that requests without provider specification route to the default provider configured in `appsettings.json`; response `serviceKey` matches the configured default
 - [ ] **[Blocking]** Invalid provider selection returns clear error with available providers — Evidence: Test cases for invalid provider names (e.g., "bloomberg", "reuters") return HTTP 400 with error message listing valid providers; no system crash occurs
 - [ ] **[Blocking]** All responses include `serviceKey` metadata — Evidence: Integration tests verify that 100% of successful responses (across all data operation types) contain a `serviceKey` field with a valid provider identifier
-- [ ] **[Blocking]** All responses include `tier` metadata — Evidence: Integration tests verify that 100% of successful responses contain a `tier` field indicating service tier (free, premium, etc.)
+- [ ] **[Blocking]** All responses include `tier` metadata — Evidence: Integration tests verify that 100% of successful responses contain a `tier` field indicating service tier (free, paid)
 - [ ] **[Blocking]** Explicitly selected providers bypass fallback chains — Evidence: Integration tests demonstrate that when a provider is explicitly selected and fails, no fallback to alternative providers occurs; error is returned directly
 - [ ] **[Blocking]** Explicitly selected providers bypass circuit breaker logic — Evidence: Integration tests confirm that circuit breaker state does not prevent explicitly selected provider attempts; explicit provider requests always attempt the selected provider
 - [ ] **[Blocking]** Provider validation occurs at runtime before data retrieval — Evidence: Unit tests demonstrate validation logic runs before provider invocation; logs show validation events
@@ -208,7 +212,7 @@ Currently, the system abstracts provider selection completely, giving users no w
    - Labels: `feature:provider-selection`, `priority:high`, `component:models`
 
 4. **[feature:provider-selection] [priority:high] Add tier metadata to all responses**
-   - Description: Extend response models to include a `tier` field indicating service tier (free, premium, etc.). Map providers to tiers in configuration.
+   - Description: Extend response models to include a `tier` field indicating service tier (free, paid). Map providers to tiers in configuration.
    - Acceptance: Integration tests verify `tier` is present in 100% of successful responses; configuration mapping is documented.
    - Labels: `feature:provider-selection`, `priority:high`, `component:models`
 

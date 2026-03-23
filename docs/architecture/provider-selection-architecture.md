@@ -254,7 +254,7 @@ MCP tool responses will include additional metadata alongside the existing `cont
 | Field | Type | Description |
 | --- | --- | --- |
 | `serviceKey` | string | Provider alias key (e.g., "yahoo", "alphavantage", "finnhub") |
-| `tier` | string | Service tier (e.g., "free", "premium") |
+| `tier` | string | Service tier (e.g., "free", "paid") |
 | `rateLimitRemaining` | int? | Remaining rate limit quota, if exposed by the provider |
 
 Metadata is serialized as a JSON object appended to the text content, separated by a delimiter, or included as a second content item of type `text` with role `metadata`. The recommended approach is to append a structured metadata JSON block at the end of the response text content, which preserves backward compatibility.
@@ -341,7 +341,7 @@ Each provider in the existing `providers[]` array gains a `tier` field:
 `ConfigurationLoader` validates the new config:
 
 - All alias values must reference a provider ID that exists in `providers[]`
-- `tier` must be a non-empty string (recommended values: "free", "premium")
+- `tier` must be a non-empty string (valid values: "free", "paid" — see ADR-003)
 - `defaultProvider` values (when non-null) must reference valid, enabled provider IDs
 - Missing `providerSelection` section is acceptable (feature disabled gracefully)
 

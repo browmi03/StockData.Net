@@ -5,7 +5,7 @@
 - **Feature Spec**: [Provider Selection](../features/provider-selection.md)
 - **Architecture**: [Stock Data Aggregation Architecture](../architecture/stock-data-aggregation-canonical-architecture.md)
 - **Security Design**: [Security Summary](../security/security-summary.md)
-- **Status**: Draft
+- **Status**: In Review
 - **Last Updated**: 2026-03-09
 
 ---
@@ -103,7 +103,7 @@ Testing follows the established project patterns: MSTest v2 with Moq, `GivenCond
 | 4.3 | `serviceKey` is programmatically identifiable in response JSON | TC-019 | Unit | Not Started |
 | 5.1 | All successful responses include `tier` field | TC-020 | Integration | Not Started |
 | 5.2 | Rate limit metadata included when available | TC-021 | Integration | Not Started |
-| 5.3 | Premium-tier provider selection shows correct tier | TC-022 | Unit | Not Started |
+| 5.3 | Paid-tier provider selection shows correct tier | TC-022 | Unit | Not Started |
 | 6.1 | Explicit provider fails → NO fallback, error returned | TC-023, TC-024 | Unit, Integration | Not Started |
 | 6.2 | Circuit breaker bypassed for explicit provider | TC-025 | Unit | Not Started |
 | 6.3 | Default provider retains standard fallback/circuit breaker behavior | TC-026 | Unit | Not Started |
@@ -319,7 +319,7 @@ Testing follows the established project patterns: MSTest v2 with Moq, `GivenCond
 - **Priority**: Critical
 - **Preconditions**: Providers configured with tier information
 - **Input**: Calls to all 10 MCP tools
-- **Expected Result**: Every successful response includes `tier` field (e.g., `"free"`, `"premium"`)
+- **Expected Result**: Every successful response includes `tier` field (e.g., `"free"`, `"paid"`)
 - **Pass Criteria**: 100% of responses include non-empty `tier` field
 
 ### TC-021: Rate Limit Metadata When Available — Integration
@@ -332,14 +332,14 @@ Testing follows the established project patterns: MSTest v2 with Moq, `GivenCond
 - **Expected Result**: Response metadata includes `rateLimitRemaining` or equivalent
 - **Pass Criteria**: Rate limit field present when provider reports it
 
-### TC-022: Premium Tier Indicator — Unit
+### TC-022: Paid Tier Indicator — Unit
 
 - **Scenario**: 5.3
 - **Level**: Unit
 - **Priority**: Medium
-- **Preconditions**: Provider with `tier: "premium"` in configuration
-- **Input**: Explicit selection of premium-tier provider
-- **Expected Result**: Response `tier` field shows `"premium"`
+- **Preconditions**: Provider with `tier: "paid"` in configuration
+- **Input**: Explicit selection of paid-tier provider
+- **Expected Result**: Response `tier` field shows `"paid"`
 - **Pass Criteria**: `tier` value matches provider configuration
 
 ### TC-023: Explicit Provider Failure — No Fallback — Unit
@@ -400,7 +400,7 @@ Testing follows the established project patterns: MSTest v2 with Moq, `GivenCond
 - TC-007: Natural language phrasing variations (boundary of NLP parsing)
 - TC-011: Missing/malformed configuration fallback
 - TC-018: Aggregated data with single `serviceKey`
-- TC-022: Premium tier indicator
+- TC-022: Paid tier indicator
 - TC-026: Default provider retains fallback chain behavior
 
 ### Error Handling Tests

@@ -41,16 +41,10 @@ public string? ResolveDefaultProviderForDataType(string dataType)
 {
     if (_configuration.ProviderSelection.DefaultProvider.TryGetValue(dataType, out var explicitDefault)
         && !string.IsNullOrWhiteSpace(explicitDefault))
-    {
         return explicitDefault;
-    }
-
     if (_configuration.Routing.DataTypeRouting.TryGetValue(dataType, out var routing)
         && !string.IsNullOrWhiteSpace(routing.PrimaryProviderId))
-    {
         return routing.PrimaryProviderId;
-    }
-
     return "yahoo_finance";
 }
 ```

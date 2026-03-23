@@ -117,7 +117,7 @@ Each provider in the `providers[]` array requires:
 | `type` | string | Yes | Provider adapter class name |
 | `enabled` | boolean | Yes | Whether provider is available for use |
 | `priority` | integer | Yes | Routing priority (lower = higher priority) |
-| `tier` | string | Yes | Service tier classification ("free", "premium") |
+| `tier` | string | Yes | Service tier classification ("free", "paid") |
 | `configuration` | object | Yes | Provider-specific settings (API keys, URLs) |
 
 #### Example Provider Entry
@@ -245,21 +245,21 @@ Disable Alpha Vantage universally:
 
 **Result:** Users cannot explicitly select Alpha Vantage. Validator returns error: `"Provider 'alphavantage' is disabled in configuration."`
 
-### Scenario 3: Premium Provider with Rate Limits
+### Scenario 3: Paid Provider with Rate Limits
 
-Configure a premium-tier provider:
+Configure a paid-tier provider:
 
 ```json
 {
   "providers": [
     {
-      "id": "premium_provider",
-      "type": "PremiumProviderAdapter",
+      "id": "paid_provider",
+      "type": "PaidProviderAdapter",
       "enabled": true,
       "priority": 1,
-      "tier": "premium",
+      "tier": "paid",
       "configuration": {
-        "apiKey": "${PREMIUM_PROVIDER_API_KEY}",
+        "apiKey": "${PAID_PROVIDER_API_KEY}",
         "rateLimit": {
           "requestsPerHour": 5000,
           "requestsPerDay": 50000
@@ -269,10 +269,10 @@ Configure a premium-tier provider:
   ],
   "providerSelection": {
     "aliases": {
-      "premium": "premium_provider"
+      "paid": "paid_provider"
     },
     "defaultProvider": {
-      "HistoricalPrices": "premium_provider"
+      "HistoricalPrices": "paid_provider"
     }
   }
 }
@@ -392,7 +392,7 @@ ConfigurationException: Provider 'alphavantage' missing required 'tier' field
 ```
 
 **Cause:** Provider entry doesn't have a `tier` field  
-**Solution:** Add `"tier": "free"` (or "premium") to the provider configuration
+**Solution:** Add `"tier": "free"` (or "paid") to the provider configuration
 
 #### Error: Default Provider Not Enabled
 

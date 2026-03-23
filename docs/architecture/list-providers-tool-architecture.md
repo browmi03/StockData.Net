@@ -3,7 +3,7 @@
 ## Document Info
 
 - **Feature Spec**: [docs/features/list-providers-tool.md](../features/list-providers-tool.md)
-- **Status**: Draft
+- **Status**: In Review
 - **Issue**: #31
 
 ## System Overview
@@ -133,24 +133,9 @@ Providers not present in `ProviderMetadata` but present in `_registeredProviders
       "id": "yahoo",
       "displayName": "Yahoo Finance",
       "aliases": ["yahoo", "yf"],
-      "supportedDataTypes": [
-        "historical_prices", "stock_info", "news", "market_news",
-        "stock_actions", "financial_statement", "holder_info",
-        "option_expiration_dates", "option_chain", "recommendations"
-      ]
-    },
-    {
-      "id": "alphavantage",
-      "displayName": "Alpha Vantage",
-      "aliases": ["alphavantage", "av"],
-      "supportedDataTypes": ["historical_prices", "stock_info", "news"]
-    },
-    {
-      "id": "finnhub",
-      "displayName": "Finnhub",
-      "aliases": ["finnhub", "fh"],
-      "supportedDataTypes": ["historical_prices", "stock_info", "news", "market_news"]
+      "supportedDataTypes": ["historical_prices", "stock_info", "news", "..."]
     }
+    // ... additional providers
   ]
 }
 ```

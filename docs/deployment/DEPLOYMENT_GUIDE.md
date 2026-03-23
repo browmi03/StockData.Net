@@ -15,7 +15,7 @@
 
 ## Overview
 
-The StockData.Net MCP Server is a locally-run Windows executable for accessing Yahoo Finance data in GitHub Copilot and VS Code.
+The StockData.Net MCP Server is a locally-run Windows executable for accessing financial market data from multiple providers in GitHub Copilot and VS Code.
 
 This guide provides step-by-step instructions for deploying the binary and configuring it with VS Code.
 
