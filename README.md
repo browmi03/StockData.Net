@@ -144,11 +144,12 @@ Once configured, ask your AI assistant:
 
 ## Configuring Market Data Providers
 
-StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports three market data providers with different strengths and capabilities:
+StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports four market data providers with different strengths and capabilities:
 
 - **Yahoo Finance** - Free, no API key required, used as default fallback
 - **Finnhub** - Real-time stock data with generous free tier
 - **Alpha Vantage** - Historical time series and forex data
+- **Alpaca Markets** - FinRL-compatible historical bars, latest quotes, and news (free and paid tiers)
 
 Each provider can be independently enabled/disabled and configured with its own API key and rate limits. The server automatically routes requests to the best available provider based on data type and implements automatic failover if a provider fails.
 
@@ -213,6 +214,10 @@ Create `appsettings.local.json` in the same directory as the server binary (e.g.
     },
     "alphavantage": {
       "apiKey": "your-alphavantage-key-here"
+    },
+    "alpaca": {
+      "apiKey": "your-alpaca-key-id-here",
+      "secretKey": "your-alpaca-secret-key-here"
     }
   }
 }
@@ -409,6 +414,58 @@ Use an environment variable placeholder in `settings.apiKey`, then set the `ALPH
 
 ---
 
+#### Alpaca Markets
+
+**Description:** Real-time and historical equities data source used by FinRL workflows. Supports historical bars, latest quotes, ticker news, and market news.
+
+**Free Tier:** 200 API calls per minute (IEX feed)
+
+**Paid Tier:** Higher data entitlements and broader feed access depending on subscription
+
+**Registration:**
+
+1. Visit [https://alpaca.markets/](https://alpaca.markets/)
+2. Create an account and open the API keys page
+3. Copy both your API Key ID and Secret Key
+
+**Configuration:**
+
+Add Alpaca credentials to your `appsettings.local.json` using environment-variable placeholders:
+
+```json
+{
+  "providers": [
+    {
+      "id": "alpaca",
+      "type": "AlpacaProvider",
+      "enabled": true,
+      "priority": 4,
+      "tier": "free",
+      "settings": {
+        "apiKey": "${ALPACA_API_KEY}",
+        "secretKey": "${ALPACA_SECRET_KEY}",
+        "baseUrl": "https://data.alpaca.markets/v2/"
+      },
+      "rateLimit": {
+        "requestsPerMinute": 200
+      }
+    }
+  ]
+}
+```
+
+Set environment variables before launching the MCP server:
+
+- `ALPACA_API_KEY`
+- `ALPACA_SECRET_KEY`
+
+**Supported tiers and capabilities:**
+
+- Free tier: `historical_prices`, `stock_info`
+- Paid tier: `historical_prices`, `stock_info`, `news`, `market_news`
+
+---
+
 ### Enable or Disable Providers
 
 Each provider in `appsettings.json` has an `enabled` flag:
@@ -451,6 +508,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 | Yahoo Finance | Not rate-limited | N/A | Provider-side limits may apply |
 | Finnhub | 60 requests/min | 60 requests/min | Configurable via `rateLimit.requestsPerMinute` |
 | Alpha Vantage | 5 requests/min | 5 req/min (500/day) | Has daily limit in addition to per-minute limit |
+| Alpaca Markets | 200 requests/min | 200 requests/min | Requires both API key ID and secret key |
 
 ---
 

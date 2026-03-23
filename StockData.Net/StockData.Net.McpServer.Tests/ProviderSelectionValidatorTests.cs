@@ -20,6 +20,48 @@ public class ProviderSelectionValidatorTests
     }
 
     [TestMethod]
+    public void Validate_WithAlpacaAlias_ReturnsResolvedProviderId()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        config.ProviderSelection.Aliases["alpaca"] = "alpaca";
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "finnhub", "alphavantage", "alpaca" });
+
+        var result = validator.Validate("alpaca");
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsTrue(result.IsExplicitSelection);
+        Assert.AreEqual("alpaca", result.ResolvedProviderId);
+    }
+
+    [TestMethod]
+    public void Validate_WithAlpacaMarketsAlias_ReturnsResolvedProviderId()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        config.ProviderSelection.Aliases["alpaca markets"] = "alpaca";
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "finnhub", "alphavantage", "alpaca" });
+
+        var result = validator.Validate("alpaca markets");
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsTrue(result.IsExplicitSelection);
+        Assert.AreEqual("alpaca", result.ResolvedProviderId);
+    }
+
+    [TestMethod]
+    public void Validate_WithFinrlAlias_ReturnsResolvedProviderId()
+    {
+        var config = new ConfigurationLoader().GetDefaultConfiguration();
+        config.ProviderSelection.Aliases["finrl"] = "alpaca";
+        var validator = new ProviderSelectionValidator(config, new[] { "yahoo_finance", "finnhub", "alphavantage", "alpaca" });
+
+        var result = validator.Validate("finrl");
+
+        Assert.IsTrue(result.IsValid);
+        Assert.IsTrue(result.IsExplicitSelection);
+        Assert.AreEqual("alpaca", result.ResolvedProviderId);
+    }
+
+    [TestMethod]
     public void Validate_WithInvalidCharacters_ReturnsInvalid()
     {
         var config = new ConfigurationLoader().GetDefaultConfiguration();
