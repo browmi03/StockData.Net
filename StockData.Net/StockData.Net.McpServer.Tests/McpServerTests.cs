@@ -384,6 +384,21 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
+    public async Task ListProviders_AlpacaMetadata_IsCorrect()
+    {
+        var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub", "alpaca");
+        var response = await InvokeListProvidersAsync(server, includeArgumentsProperty: true);
+        var providers = ParseProvidersFromToolResponse(response);
+        var alpaca = FindProviderById(providers, "alpaca");
+
+        Assert.AreEqual("Alpaca Markets", alpaca.GetProperty("displayName").GetString());
+
+        var supportedDataTypes = alpaca.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
+        CollectionAssert.Contains(supportedDataTypes, "historical_prices");
+        CollectionAssert.Contains(supportedDataTypes, "stock_info");
+    }
+
+    [TestMethod]
     public async Task ListProviders_ZeroArgumentCall_DoesNotThrow()
     {
         var server = CreateServerWithProviders("yahoo_finance", "alphavantage", "finnhub");
@@ -1956,6 +1971,18 @@ public class StockDataMcpServerTests
                     "news",
                     "market_news",
                     "recommendations"
+                },
+                "alpaca" when string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase) => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news"
+                },
+                "alpaca" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "historical_prices",
+                    "stock_info"
                 },
                 _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {

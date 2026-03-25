@@ -21,7 +21,10 @@ public sealed class ProviderSelectionValidator
                 "Alpha Vantage"),
             ["finnhub"] = (
                 "finnhub",
-                "Finnhub")
+                "Finnhub"),
+            ["alpaca"] = (
+                "alpaca",
+                "Alpaca Markets")
         };
 
     private readonly McpConfiguration _configuration;
@@ -240,6 +243,19 @@ public sealed class ProviderSelectionValidator
                 "market_news",
                 "stock_actions"
             },
+            "alpaca" => string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase)
+                ? new[]
+                {
+                    "historical_prices",
+                    "stock_info",
+                    "news",
+                    "market_news"
+                }
+                : new[]
+                {
+                    "historical_prices",
+                    "stock_info"
+                },
             _ => Array.Empty<string>()
         };
 

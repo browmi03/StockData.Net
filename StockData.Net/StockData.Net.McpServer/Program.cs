@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using StockData.Net;
+using StockData.Net.Clients.Alpaca;
 using StockData.Net.Clients.AlphaVantage;
 using StockData.Net.Clients.Finnhub;
 using StockData.Net.Configuration;
@@ -39,6 +40,7 @@ builder.Services.AddSingleton<IStockDataProvider, YahooFinanceProvider>();
 
 RegisterFinnhubProvider(builder.Services, config);
 RegisterAlphaVantageProvider(builder.Services, config);
+RegisterAlpacaProvider(builder.Services, config);
 
 // Register symbol translation
 builder.Services.AddSingleton<ISymbolTranslator, SymbolTranslator>();
@@ -123,6 +125,34 @@ static void RegisterAlphaVantageProvider(IServiceCollection services, McpConfigu
     services.AddSingleton<IStockDataProvider, AlphaVantageProvider>();
 }
 
+static void RegisterAlpacaProvider(IServiceCollection services, McpConfiguration config)
+{
+    var providerConfig = GetProviderConfiguration(config, "alpaca");
+    if (providerConfig is null || !providerConfig.Enabled)
+    {
+        return;
+    }
+
+    var apiKeyId = ResolveProviderApiKey(providerConfig, "ALPACA_API_KEY");
+    var secretKey = ResolveAlpacaSecretKey(providerConfig);
+
+    if (string.IsNullOrWhiteSpace(apiKeyId) || string.IsNullOrWhiteSpace(secretKey))
+    {
+        Console.Error.WriteLine("[Startup] Alpaca provider is enabled but API credentials are missing. Skipping registration.");
+        return;
+    }
+
+    var baseUrl = ResolveBaseUrl(providerConfig, "https://data.alpaca.markets/v2/");
+
+    services.AddSingleton<IAlpacaClient>(_ =>
+        new AlpacaClient(
+            new HttpClient { BaseAddress = new Uri(baseUrl) },
+            new SecretValue(apiKeyId),
+            new SecretValue(secretKey),
+            providerConfig.RateLimit));
+    services.AddSingleton<IStockDataProvider, AlpacaProvider>();
+}
+
 static ProviderConfiguration? GetProviderConfiguration(McpConfiguration config, string providerId)
 {
     return config.Providers.FirstOrDefault(
@@ -156,6 +186,20 @@ static string? ResolveProviderApiKey(ProviderConfiguration providerConfig, strin
 static string EnsureTrailingSlash(string url)
 {
     return url.EndsWith("/", StringComparison.Ordinal) ? url : $"{url}/";
+}
+
+static string? ResolveAlpacaSecretKey(ProviderConfiguration providerConfig)
+{
+    if (providerConfig.Settings.TryGetValue("secretKey", out var configured) && !string.IsNullOrWhiteSpace(configured))
+    {
+        var resolved = ResolveEnvironmentPlaceholder(configured);
+        if (!string.IsNullOrWhiteSpace(resolved))
+        {
+            return resolved;
+        }
+    }
+
+    return Environment.GetEnvironmentVariable("ALPACA_SECRET_KEY");
 }
 
 static string? ResolveEnvironmentPlaceholder(string value)
