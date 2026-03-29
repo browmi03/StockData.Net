@@ -68,7 +68,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 askPrice = quote.AskPrice,
                 midPrice = (quote.BidPrice + quote.AskPrice) / 2d,
                 timestamp = quote.Timestamp,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = InferCountryFromTicker(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -292,5 +293,45 @@ public sealed class AlpacaProvider : IStockDataProvider
         {
             throw new ArgumentException("Ticker symbol contains invalid characters.", nameof(ticker));
         }
+    }
+
+    private static string InferCountryFromTicker(string ticker)
+    {
+        if (string.IsNullOrWhiteSpace(ticker))
+            return "Unknown";
+
+        // Check for exchange suffixes
+        var upperTicker = ticker.ToUpperInvariant();
+        
+        // Canadian exchanges
+        if (upperTicker.EndsWith(".TO") || upperTicker.EndsWith(".V") || upperTicker.EndsWith(".CN"))
+            return "Canada";
+        
+        // Australian exchange
+        if (upperTicker.EndsWith(".AX"))
+            return "Australia";
+        
+        // London exchange
+        if (upperTicker.EndsWith(".L"))
+            return "United Kingdom";
+        
+        // German exchanges
+        if (upperTicker.EndsWith(".DE") || upperTicker.EndsWith(".F") || upperTicker.EndsWith(".ETR") || upperTicker.EndsWith(".DB"))
+            return "Germany";
+        
+        // French exchange
+        if (upperTicker.EndsWith(".PA"))
+            return "France";
+        
+        // Hong Kong exchange
+        if (upperTicker.EndsWith(".HK"))
+            return "Hong Kong";
+        
+        // Japanese exchange
+        if (upperTicker.EndsWith(".T") || upperTicker.EndsWith(".TYO"))
+            return "Japan";
+        
+        // Default to US for most cases (NASDAQ, NYSE, etc.)
+        return "United States";
     }
 }
