@@ -68,7 +68,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 askPrice = quote.AskPrice,
                 midPrice = (quote.BidPrice + quote.AskPrice) / 2d,
                 timestamp = quote.Timestamp,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                Country = "US"
             };
 
             return JsonSerializer.Serialize(payload);
@@ -184,7 +185,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 Low = bar.Low,
                 Close = bar.Close,
                 Volume = bar.Volume,
-                SourceProvider = "alpaca"
+                SourceProvider = "alpaca",
+                Country = "US"
             });
         }
 

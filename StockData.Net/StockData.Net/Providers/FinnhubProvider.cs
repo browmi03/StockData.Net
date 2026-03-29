@@ -80,7 +80,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                Country = "US"
             };
 
             return JsonSerializer.Serialize(payload);
@@ -164,7 +165,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 trend.Hold,
                 trend.Sell,
                 trend.StrongSell,
-                SourceProvider = ProviderId
+                SourceProvider = ProviderId,
+                Country = "US"
             });
 
             return JsonSerializer.Serialize(payload);
@@ -227,7 +229,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "finnhub"
+                SourceProvider = "finnhub",
+                Country = "US"
             });
         }
 
