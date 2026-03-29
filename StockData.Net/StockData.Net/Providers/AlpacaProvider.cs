@@ -68,7 +68,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 askPrice = quote.AskPrice,
                 midPrice = (quote.BidPrice + quote.AskPrice) / 2d,
                 timestamp = quote.Timestamp,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = quote.Country  // Use the country from the quote if available
             };
 
             return JsonSerializer.Serialize(payload);
