@@ -80,7 +80,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default to US for Finnhub (global but often US)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -227,7 +228,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "finnhub"
+                SourceProvider = "finnhub",
+                Country = "US"
             });
         }
 
@@ -253,7 +255,7 @@ public sealed class FinnhubProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);
@@ -279,7 +281,7 @@ public sealed class FinnhubProvider : IStockDataProvider
                 ? string.Empty
                 : $"\nRelated Tickers: {item.Related}";
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);

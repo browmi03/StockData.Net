@@ -68,7 +68,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 askPrice = quote.AskPrice,
                 midPrice = (quote.BidPrice + quote.AskPrice) / 2d,
                 timestamp = quote.Timestamp,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default to US for Alpaca (US markets)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -184,7 +185,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 Low = bar.Low,
                 Close = bar.Close,
                 Volume = bar.Volume,
-                SourceProvider = "alpaca"
+                SourceProvider = "alpaca",
+                Country = "US"
             });
         }
 
@@ -209,7 +211,7 @@ public sealed class AlpacaProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.Symbols)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nSummary: {item.Summary}");
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nSummary: {item.Summary}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);
@@ -233,7 +235,7 @@ public sealed class AlpacaProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.Symbols)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nSummary: {item.Summary}");
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nSummary: {item.Summary}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);

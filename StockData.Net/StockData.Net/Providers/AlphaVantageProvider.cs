@@ -66,7 +66,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default to US for Alpha Vantage (primarily US data)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -208,7 +209,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "alphavantage"
+                SourceProvider = "alphavantage",
+                Country = "US"
             });
         }
 
@@ -234,7 +236,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Title}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            blocks.Add($"Title: {item.Title}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);
@@ -260,7 +262,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Title}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            blocks.Add($"Title: {item.Title}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}\nCountry: US");
         }
 
         return string.Join("\n\n", blocks);
