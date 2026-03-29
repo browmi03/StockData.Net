@@ -195,7 +195,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         }
     }
 
-    private static List<object> MapHistoricalPrices(List<AlphaVantageCandle> candles)
+    private static List<object> MapHistoricalPrices(List<AlphaVantageCandle> candles, string ticker)
     {
         var rows = new List<object>(candles.Count);
 
