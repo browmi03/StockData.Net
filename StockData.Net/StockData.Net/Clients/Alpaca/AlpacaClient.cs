@@ -155,7 +155,8 @@ public sealed class AlpacaClient : IAlpacaClient
                 AskSize: payload.Quote.AskSize,
                 BidPrice: payload.Quote.BidPrice,
                 BidSize: payload.Quote.BidSize,
-                Timestamp: payload.Quote.Timestamp);
+                Timestamp: payload.Quote.Timestamp,
+                Country: InferCountryFromSymbol(symbol));
         }
         catch (OperationCanceledException)
         {
@@ -336,6 +337,46 @@ public sealed class AlpacaClient : IAlpacaClient
         {
             throw new ArgumentException("Symbol contains invalid characters.", nameof(symbol));
         }
+    }
+
+    private static string InferCountryFromSymbol(string symbol)
+    {
+        // Simple inference based on common suffixes
+        if (string.IsNullOrWhiteSpace(symbol))
+            return "US";
+        
+        var trimmed = symbol.Trim().ToUpperInvariant();
+        
+        // Check for common country suffixes
+        if (trimmed.EndsWith(".TO") || trimmed.EndsWith(".V") || trimmed.EndsWith(".CN"))
+            return "CA";
+        if (trimmed.EndsWith(".L") || trimmed.EndsWith(".IL"))
+            return "GB";
+        if (trimmed.EndsWith(".F") || trimmed.EndsWith(".DE"))
+            return "DE";
+        if (trimmed.EndsWith(".PA"))
+            return "FR";
+        if (trimmed.EndsWith(".AS") || trimmed.EndsWith(".NL"))
+            return "NL";
+        if (trimmed.EndsWith(".BR") || trimmed.EndsWith(".SA"))
+            return "BR";
+        if (trimmed.EndsWith(".AX"))
+            return "AU";
+        if (trimmed.EndsWith(".NZ"))
+            return "NZ";
+        if (trimmed.EndsWith(".HK"))
+            return "HK";
+        if (trimmed.EndsWith(".T") || trimmed.EndsWith(".TWO"))
+            return "TW";
+        if (trimmed.EndsWith(".KS") || trimmed.EndsWith(".KQ"))
+            return "KR";
+        if (trimmed.EndsWith(".SS") || trimmed.EndsWith(".SZ"))
+            return "CN";
+        if (trimmed.EndsWith(".BO") || trimmed.EndsWith(".NS"))
+            return "IN";
+        
+        // Default to US for most symbols without suffixes
+        return "US";
     }
 
     private static int ResolveRequestsPerMinute(RateLimitConfiguration? rateLimit, int fallback)
