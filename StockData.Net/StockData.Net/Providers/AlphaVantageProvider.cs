@@ -66,7 +66,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = InferCountryFromSymbol(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -304,6 +305,77 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         if (!symbolBody.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-'))
         {
             throw new ArgumentException("Ticker symbol contains invalid characters.", nameof(ticker));
+        }
+    }
+
+    private static string InferCountryFromSymbol(string ticker)
+    {
+        if (string.IsNullOrWhiteSpace(ticker))
+        {
+            return "Unknown";
+        }
+
+        // Remove any prefix like "^" for indices
+        var cleanSymbol = ticker.StartsWith("^", StringComparison.Ordinal) ? ticker[1..] : ticker;
+        
+        // Check for common country suffixes in ticker symbols
+        if (cleanSymbol.EndsWith(".TO", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Canada";
+        }
+        else if (cleanSymbol.EndsWith(".L", StringComparison.OrdinalIgnoreCase))
+        {
+            return "United Kingdom";
+        }
+        else if (cleanSymbol.EndsWith(".AX", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Australia";
+        }
+        else if (cleanSymbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Germany";
+        }
+        else if (cleanSymbol.EndsWith(".PA", StringComparison.OrdinalIgnoreCase))
+        {
+            return "France";
+        }
+        else if (cleanSymbol.EndsWith(".AS", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Netherlands";
+        }
+        else if (cleanSymbol.EndsWith(".SW", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Switzerland";
+        }
+        else if (cleanSymbol.EndsWith(".HK", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Hong Kong";
+        }
+        else if (cleanSymbol.EndsWith(".T", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Japan";
+        }
+        else if (cleanSymbol.EndsWith(".KS", StringComparison.OrdinalIgnoreCase))
+        {
+            return "South Korea";
+        }
+        else if (cleanSymbol.EndsWith(".SS", StringComparison.OrdinalIgnoreCase))
+        {
+            return "China";
+        }
+        else if (cleanSymbol.EndsWith(".SZ", StringComparison.OrdinalIgnoreCase))
+        {
+            return "China";
+        }
+        else if (cleanSymbol.Contains('.'))
+        {
+            // Has a dot but not a recognized suffix
+            return "International";
+        }
+        else
+        {
+            // No dot, likely a US ticker
+            return "United States";
         }
     }
 }

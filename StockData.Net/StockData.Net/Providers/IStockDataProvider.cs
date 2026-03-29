@@ -37,7 +37,7 @@ public interface IStockDataProvider
     /// </summary>
     /// <param name="ticker">Stock ticker symbol (e.g., "AAPL")</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>JSON string containing stock information</returns>
+    /// <returns>JSON string containing stock information including price, change, timestamp, and country information</returns>
     Task<string> GetStockInfoAsync(string ticker, CancellationToken cancellationToken = default);
 
     /// <summary>
