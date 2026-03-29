@@ -70,7 +70,7 @@ public sealed class FinnhubClient : IFinnhubClient
             return new FinnhubQuote(
                 CurrentPrice: payload.CurrentPrice,
                 Change: payload.Change,
-                PercentPercentChange: payload.PercentChange,
+                PercentChange: payload.PercentChange,
                 High: payload.High,
                 Low: payload.Low,
                 Open: payload.Open,
