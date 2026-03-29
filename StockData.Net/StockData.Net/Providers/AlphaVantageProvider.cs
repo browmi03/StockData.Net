@@ -45,7 +45,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
 
             var (from, to) = ResolveDateWindow(period);
             var candles = await _client.GetHistoricalPricesAsync(ticker, from.UtcDateTime, to.UtcDateTime, cancellationToken);
-            return JsonSerializer.Serialize(MapHistoricalPrices(candles));
+            return JsonSerializer.Serialize(MapHistoricalPrices(candles, ticker));
         }, nameof(GetHistoricalPricesAsync));
     }
 
@@ -66,7 +66,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = GetCountryFromSymbol(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -208,7 +209,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "alphavantage"
+                SourceProvider = "alphavantage",
+                Country = GetCountryFromSymbol(ticker)
             });
         }
 
@@ -286,6 +288,33 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         };
 
         return (from, to);
+    }
+
+    private static string GetCountryFromSymbol(string ticker)
+    {
+        // Extract country from ticker suffix (e.g., .TO for Toronto, .L for London)
+        if (ticker.Contains('.'))
+        {
+            var suffix = ticker.Split('.').Last();
+            return suffix.ToUpper() switch
+            {
+                "TO" => "Canada",
+                "L" => "United Kingdom",
+                "PA" => "France",
+                "DE" => "Germany",
+                "AS" => "Netherlands",
+                "BR" => "Brazil",
+                "V" => "Canada",
+                "N" => "United States",
+                "O" => "United States",
+                "A" => "United States",
+                "B" => "United States",
+                _ => "Unknown"
+            };
+        }
+        
+        // Default to US for symbols without suffix
+        return "United States";
     }
 
     private static void ValidateTicker(string ticker)

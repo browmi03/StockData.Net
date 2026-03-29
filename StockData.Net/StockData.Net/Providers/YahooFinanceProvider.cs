@@ -114,6 +114,33 @@ public class YahooFinanceProvider : IStockDataProvider
         }
     }
 
+    private static string GetCountryFromSymbol(string ticker)
+    {
+        // Extract country from ticker suffix (e.g., .TO for Toronto, .L for London)
+        if (ticker.Contains('.'))
+        {
+            var suffix = ticker.Split('.').Last();
+            return suffix.ToUpper() switch
+            {
+                "TO" => "Canada",
+                "L" => "United Kingdom",
+                "PA" => "France",
+                "DE" => "Germany",
+                "AS" => "Netherlands",
+                "BR" => "Brazil",
+                "V" => "Canada",
+                "N" => "United States",
+                "O" => "United States",
+                "A" => "United States",
+                "B" => "United States",
+                _ => "Unknown"
+            };
+        }
+        
+        // Default to US for symbols without suffix
+        return "United States";
+    }
+
     private static void ValidateTicker(string ticker)
     {
         if (string.IsNullOrWhiteSpace(ticker))
