@@ -66,7 +66,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default country, can be enhanced with actual data
             };
 
             return JsonSerializer.Serialize(payload);
@@ -111,7 +112,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Date,
                     item.Value,
                     item.ActionType,
-                    sourceProvider = ProviderId
+                    sourceProvider = ProviderId,
+                    country = "US" // Default country, can be enhanced with actual data
                 }),
                 stockSplits = actions.Splits.Select(item => new
                 {
@@ -120,9 +122,11 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Numerator,
                     item.Denominator,
                     item.ActionType,
-                    sourceProvider = ProviderId
+                    sourceProvider = ProviderId,
+                    country = "US" // Default country, can be enhanced with actual data
                 }),
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default country, can be enhanced with actual data
             };
 
             return JsonSerializer.Serialize(payload);

@@ -80,7 +80,8 @@ public sealed class FinnhubProvider : IStockDataProvider
                 change = quote.Change,
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                country = "US" // Default country, can be enhanced with actual data
             };
 
             return JsonSerializer.Serialize(payload);
