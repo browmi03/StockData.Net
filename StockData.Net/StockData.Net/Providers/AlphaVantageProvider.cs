@@ -112,7 +112,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Date,
                     item.Value,
                     item.ActionType,
-                    sourceProvider = ProviderId
+                    sourceProvider = ProviderId,
+                    Country = "US"
                 }),
                 stockSplits = actions.Splits.Select(item => new
                 {
@@ -121,9 +122,11 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Numerator,
                     item.Denominator,
                     item.ActionType,
-                    sourceProvider = ProviderId
+                    sourceProvider = ProviderId,
+                    Country = "US"
                 }),
-                sourceProvider = ProviderId
+                sourceProvider = ProviderId,
+                Country = "US"
             };
 
             return JsonSerializer.Serialize(payload);
@@ -209,7 +212,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "alphavantage"
+                SourceProvider = "alphavantage",
+                Country = "US"
             });
         }
 

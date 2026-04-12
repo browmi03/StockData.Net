@@ -185,7 +185,8 @@ public sealed class AlpacaProvider : IStockDataProvider
                 Low = bar.Low,
                 Close = bar.Close,
                 Volume = bar.Volume,
-                SourceProvider = "alpaca"
+                SourceProvider = "alpaca",
+                Country = "US"
             });
         }
 
