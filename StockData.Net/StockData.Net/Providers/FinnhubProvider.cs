@@ -81,7 +81,7 @@ public sealed class FinnhubProvider : IStockDataProvider
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
                 sourceProvider = ProviderId,
-                Country = "US"
+                country = quote.Country
             };
 
             return JsonSerializer.Serialize(payload);
@@ -256,7 +256,9 @@ public sealed class FinnhubProvider : IStockDataProvider
                 ? $"\nRelated Tickers: {string.Join(", ", item.RelatedTickers)}"
                 : string.Empty;
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            var country = string.IsNullOrEmpty(item.Country) ? string.Empty : $"\nCountry: {item.Country}";
+
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}{country}\nURL: {item.Url}");
         }
 
         return string.Join("\n\n", blocks);
@@ -282,7 +284,9 @@ public sealed class FinnhubProvider : IStockDataProvider
                 ? string.Empty
                 : $"\nRelated Tickers: {item.Related}";
 
-            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}\nURL: {item.Url}");
+            var country = string.IsNullOrEmpty(item.Country) ? string.Empty : $"\nCountry: {item.Country}";
+
+            blocks.Add($"Title: {item.Headline}\nPublisher: {item.Source}\nPublished: {published}{relatedTickers}{country}\nURL: {item.Url}");
         }
 
         return string.Join("\n\n", blocks);

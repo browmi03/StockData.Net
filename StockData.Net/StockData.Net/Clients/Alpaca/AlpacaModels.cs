@@ -15,7 +15,8 @@ public record AlpacaQuote(
     long AskSize,
     double BidPrice,
     long BidSize,
-    DateTime Timestamp);
+    DateTime Timestamp,
+    string? Country = null);
 
 public record AlpacaNewsArticle(
     string Id,
@@ -24,4 +25,5 @@ public record AlpacaNewsArticle(
     string Url,
     string Source,
     DateTime CreatedAt,
-    List<string> Symbols);
+    List<string> Symbols,
+    string? Country = null);

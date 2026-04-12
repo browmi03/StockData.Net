@@ -2,10 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace StockData.Net.Clients.AlphaVantage;
 
-public record AlphaVantageQuote(double Price, double Change, double PercentChange, long Timestamp);
+public record AlphaVantageQuote(double Price, double Change, double PercentChange, long Timestamp, string? Country = null);
 public record AlphaVantageCandle(long Timestamp, double Open, double High, double Low, double Close, long Volume);
-public record AlphaVantageNewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers);
-public record NewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers);
+public record AlphaVantageNewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers, string? Country = null);
+public record NewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers, string? Country = null);
 public record StockActionItem(DateTime Date, string ActionType, decimal Value, decimal? Numerator, decimal? Denominator);
 public record StockActionsResult(IReadOnlyList<StockActionItem> Dividends, IReadOnlyList<StockActionItem> Splits);
 

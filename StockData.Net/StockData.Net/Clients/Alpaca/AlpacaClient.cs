@@ -155,7 +155,8 @@ public sealed class AlpacaClient : IAlpacaClient
                 AskSize: payload.Quote.AskSize,
                 BidPrice: payload.Quote.BidPrice,
                 BidSize: payload.Quote.BidSize,
-                Timestamp: payload.Quote.Timestamp);
+                Timestamp: payload.Quote.Timestamp,
+                Country: payload.Quote.Country);
         }
         catch (OperationCanceledException)
         {
@@ -255,7 +256,8 @@ public sealed class AlpacaClient : IAlpacaClient
                 Url: row.Url ?? string.Empty,
                 Source: row.Source ?? string.Empty,
                 CreatedAt: row.CreatedAt,
-                Symbols: row.Symbols ?? []));
+                Symbols: row.Symbols ?? [],
+                Country: row.Country));
         }
 
         return items;
