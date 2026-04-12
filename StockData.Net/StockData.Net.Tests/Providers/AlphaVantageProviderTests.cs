@@ -46,6 +46,7 @@ public class AlphaVantageProviderTests
         Assert.AreEqual("AAPL", document.RootElement.GetProperty("symbol").GetString());
         Assert.AreEqual(188.42d, document.RootElement.GetProperty("price").GetDouble(), 0.0001d);
         Assert.AreEqual("alphavantage", document.RootElement.GetProperty("sourceProvider").GetString());
+        Assert.AreEqual("US", document.RootElement.GetProperty("Country").GetString());
     }
 
     [TestMethod]

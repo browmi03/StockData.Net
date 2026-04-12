@@ -21,6 +21,21 @@ public class FinnhubProviderTests
     }
 
     [TestMethod]
+    public async Task GetStockInfoAsync_WhenClientReturnsQuote_SerializesCountryAsIsoCode()
+    {
+        _client.Setup(c => c.GetQuoteAsync("AAPL", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FinnhubQuote(101.2, 0.5, 0.49, 102.0, 100.5, 100.7, 100.9, 1_700_000_000));
+
+        var result = await _provider.GetStockInfoAsync("AAPL");
+
+        using var document = JsonDocument.Parse(result);
+        Assert.AreEqual("AAPL", document.RootElement.GetProperty("symbol").GetString());
+        Assert.AreEqual("finnhub", document.RootElement.GetProperty("sourceProvider").GetString());
+        Assert.AreEqual("US", document.RootElement.GetProperty("Country").GetString());
+        _client.Verify(c => c.GetQuoteAsync("AAPL", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
     public async Task GetMarketNewsAsync_WhenClientReturnsItems_FormatsMarketNews()
     {
         _client.Setup(c => c.GetMarketNewsAsync("general", It.IsAny<CancellationToken>()))

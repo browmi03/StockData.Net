@@ -81,7 +81,7 @@ public sealed class FinnhubProvider : IStockDataProvider
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
                 sourceProvider = ProviderId,
-                Country = InferCountryFromSymbol(ticker)
+                Country = TickerCountryInferrer.InferIsoCountryCode(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -166,7 +166,7 @@ public sealed class FinnhubProvider : IStockDataProvider
                 trend.Sell,
                 trend.StrongSell,
                 SourceProvider = ProviderId,
-                Country = InferCountryFromSymbol(ticker)
+                Country = TickerCountryInferrer.InferIsoCountryCode(ticker)
             });
 
             return JsonSerializer.Serialize(payload);
@@ -217,7 +217,7 @@ public sealed class FinnhubProvider : IStockDataProvider
 
     private static List<object> MapHistoricalPrices(List<FinnhubCandle> candles, string ticker)
     {
-        var country = InferCountryFromSymbol(ticker);
+        var country = TickerCountryInferrer.InferIsoCountryCode(ticker);
         var rows = new List<object>(candles.Count);
 
         foreach (var candle in candles)
@@ -343,47 +343,15 @@ public sealed class FinnhubProvider : IStockDataProvider
             throw new ArgumentException("Ticker symbol cannot exceed 10 characters.", nameof(ticker));
         }
 
+        if (ticker.StartsWith("^", StringComparison.Ordinal) && ticker.Length == 1)
+        {
+            throw new ArgumentException("Ticker cannot consist only of '^'.", nameof(ticker));
+        }
+
         var symbolBody = ticker.StartsWith("^", StringComparison.Ordinal) ? ticker[1..] : ticker;
         if (!symbolBody.All(c => char.IsLetterOrDigit(c) || c == '.' || c == '-'))
         {
             throw new ArgumentException("Ticker symbol contains invalid characters.", nameof(ticker));
         }
-    }
-
-    private static string InferCountryFromSymbol(string ticker)
-    {
-        if (string.IsNullOrWhiteSpace(ticker))
-        {
-            return "Unknown";
-        }
-
-        var cleanSymbol = ticker.StartsWith("^", StringComparison.Ordinal) ? ticker[1..] : ticker;
-
-        if (cleanSymbol.EndsWith(".TO", StringComparison.OrdinalIgnoreCase)) return "Canada";
-        if (cleanSymbol.EndsWith(".V", StringComparison.OrdinalIgnoreCase)) return "Canada";
-        if (cleanSymbol.EndsWith(".CN", StringComparison.OrdinalIgnoreCase)) return "Canada";
-        if (cleanSymbol.EndsWith(".L", StringComparison.OrdinalIgnoreCase)) return "United Kingdom";
-        if (cleanSymbol.EndsWith(".IL", StringComparison.OrdinalIgnoreCase)) return "United Kingdom";
-        if (cleanSymbol.EndsWith(".AX", StringComparison.OrdinalIgnoreCase)) return "Australia";
-        if (cleanSymbol.EndsWith(".NZ", StringComparison.OrdinalIgnoreCase)) return "New Zealand";
-        if (cleanSymbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase)) return "Germany";
-        if (cleanSymbol.EndsWith(".F", StringComparison.OrdinalIgnoreCase)) return "Germany";
-        if (cleanSymbol.EndsWith(".PA", StringComparison.OrdinalIgnoreCase)) return "France";
-        if (cleanSymbol.EndsWith(".AS", StringComparison.OrdinalIgnoreCase)) return "Netherlands";
-        if (cleanSymbol.EndsWith(".SW", StringComparison.OrdinalIgnoreCase)) return "Switzerland";
-        if (cleanSymbol.EndsWith(".BR", StringComparison.OrdinalIgnoreCase)) return "Brazil";
-        if (cleanSymbol.EndsWith(".SA", StringComparison.OrdinalIgnoreCase)) return "Brazil";
-        if (cleanSymbol.EndsWith(".HK", StringComparison.OrdinalIgnoreCase)) return "Hong Kong";
-        if (cleanSymbol.EndsWith(".T", StringComparison.OrdinalIgnoreCase)) return "Japan";
-        if (cleanSymbol.EndsWith(".KS", StringComparison.OrdinalIgnoreCase)) return "South Korea";
-        if (cleanSymbol.EndsWith(".KQ", StringComparison.OrdinalIgnoreCase)) return "South Korea";
-        if (cleanSymbol.EndsWith(".SS", StringComparison.OrdinalIgnoreCase)) return "China";
-        if (cleanSymbol.EndsWith(".SZ", StringComparison.OrdinalIgnoreCase)) return "China";
-        if (cleanSymbol.EndsWith(".BO", StringComparison.OrdinalIgnoreCase)) return "India";
-        if (cleanSymbol.EndsWith(".NS", StringComparison.OrdinalIgnoreCase)) return "India";
-
-        if (cleanSymbol.Contains('.')) return "International";
-
-        return "United States";
     }
 }
