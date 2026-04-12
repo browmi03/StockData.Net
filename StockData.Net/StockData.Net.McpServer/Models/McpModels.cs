@@ -85,4 +85,7 @@ public sealed record ProviderInfo
 
     [JsonPropertyName("supportedDataTypes")]
     public string[] SupportedDataTypes { get; init; } = Array.Empty<string>();
+
+    [JsonPropertyName("category")]
+    public string Category { get; init; } = "FinancialData";
 }

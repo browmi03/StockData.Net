@@ -8,6 +8,7 @@ using StockData.Net.Configuration;
 using StockData.Net.Deduplication;
 using StockData.Net.McpServer;
 using StockData.Net.Providers;
+using StockData.Net.Providers.SocialMedia;
 using StockData.Net.Security;
 
 // Load .env file from the application directory so ${VAR} placeholders resolve correctly.
@@ -41,6 +42,7 @@ builder.Services.AddSingleton<IStockDataProvider, YahooFinanceProvider>();
 RegisterFinnhubProvider(builder.Services, config);
 RegisterAlphaVantageProvider(builder.Services, config);
 RegisterAlpacaProvider(builder.Services, config);
+RegisterXTwitterProvider(builder.Services, config);
 
 // Register symbol translation
 builder.Services.AddSingleton<ISymbolTranslator, SymbolTranslator>();
@@ -55,6 +57,19 @@ builder.Services.AddSingleton<MarketEventsToolHandler>(sp =>
     var deduplicator = sp.GetRequiredService<MarketEventDeduplicator>();
     var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<MarketEventsToolHandler>>();
     return new MarketEventsToolHandler(providers, deduplicator, logger);
+});
+builder.Services.AddSingleton<SocialFeedCache>();
+builder.Services.AddSingleton<SocialMediaRouter>(sp =>
+{
+    var providers = sp.GetServices<ISocialMediaProvider>();
+    var cache = sp.GetRequiredService<SocialFeedCache>();
+    return new SocialMediaRouter(providers, cache);
+});
+builder.Services.AddSingleton<SocialFeedToolHandler>(sp =>
+{
+    var router = sp.GetRequiredService<SocialMediaRouter>();
+    var configuration = sp.GetRequiredService<McpConfiguration>();
+    return new SocialFeedToolHandler(router, configuration);
 });
 
 // Register router with all providers
@@ -75,7 +90,9 @@ builder.Services.AddSingleton<StockDataMcpServer>(sp =>
     var configuration = sp.GetRequiredService<McpConfiguration>();
     var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<StockDataMcpServer>>();
     var marketEventsHandler = sp.GetRequiredService<MarketEventsToolHandler>();
-    return new StockDataMcpServer(router, configuration, logger, marketEventsHandler);
+    var socialFeedHandler = sp.GetRequiredService<SocialFeedToolHandler>();
+    var socialProviders = sp.GetServices<ISocialMediaProvider>();
+    return new StockDataMcpServer(router, configuration, logger, marketEventsHandler, socialFeedHandler, socialProviders);
 });
 
 var host = builder.Build();
@@ -162,6 +179,35 @@ static void RegisterAlpacaProvider(IServiceCollection services, McpConfiguration
             new SecretValue(secretKey),
             providerConfig.RateLimit));
     services.AddSingleton<IStockDataProvider, AlpacaProvider>();
+}
+
+static void RegisterXTwitterProvider(IServiceCollection services, McpConfiguration config)
+{
+    var providerConfig = GetProviderConfiguration(config, "xtwitter");
+    if (providerConfig is null || !providerConfig.Enabled)
+    {
+        return;
+    }
+
+    var baseUrl = ResolveBaseUrl(providerConfig, "https://api.twitter.com/");
+    if (!baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("[Startup] XTwitter provider requires an HTTPS base URL. Skipping registration.");
+        return;
+    }
+
+    services.AddHttpClient("xtwitter", client =>
+    {
+        client.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
+        client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        // X API v2 endpoints should not redirect; disable to avoid protocol downgrade risks.
+        AllowAutoRedirect = false
+    });
+
+    services.AddSingleton<ISocialMediaProvider, XTwitterProvider>();
 }
 
 static ProviderConfiguration? GetProviderConfiguration(McpConfiguration config, string providerId)
