@@ -8,6 +8,7 @@ using StockData.Net.Deduplication;
 using StockData.Net.Models;
 using StockData.Net.McpServer.Models;
 using StockData.Net.Providers;
+using StockData.Net.Providers.SocialMedia;
 using StockData.Net.Security;
 
 [assembly: InternalsVisibleTo("StockData.Net.McpServer.Tests")]
@@ -21,6 +22,7 @@ public class StockDataMcpServer
 {
     private readonly StockDataProviderRouter _router;
     private readonly MarketEventsToolHandler _marketEventsToolHandler;
+    private readonly SocialFeedToolHandler _socialFeedToolHandler;
     private readonly ProviderSelectionValidator _providerValidator;
     private readonly ILogger<StockDataMcpServer>? _logger;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -36,14 +38,18 @@ public class StockDataMcpServer
         StockDataProviderRouter router,
         McpConfiguration configuration,
         ILogger<StockDataMcpServer>? logger = null,
-        MarketEventsToolHandler? marketEventsToolHandler = null)
+        MarketEventsToolHandler? marketEventsToolHandler = null,
+        SocialFeedToolHandler? socialFeedToolHandler = null,
+        IEnumerable<ISocialMediaProvider>? socialMediaProviders = null)
     {
         _router = router;
         _marketEventsToolHandler = marketEventsToolHandler ?? new MarketEventsToolHandler(Array.Empty<IMarketEventsProvider>(), new MarketEventDeduplicator());
+        _socialFeedToolHandler = socialFeedToolHandler ?? new SocialFeedToolHandler(new SocialMediaRouter(Array.Empty<ISocialMediaProvider>(), new SocialFeedCache()), configuration);
         _providerValidator = new ProviderSelectionValidator(
             configuration,
-            _router.GetRegisteredProviderIds(),
-            _router.GetRegisteredProviders());
+            _router.GetRegisteredProviderIds().Concat((socialMediaProviders ?? Enumerable.Empty<ISocialMediaProvider>()).Select(provider => provider.ProviderId)),
+            _router.GetRegisteredProviders(),
+            socialMediaProviders);
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
@@ -375,6 +381,21 @@ public class StockDataMcpServer
                         to_date = new { type = "string", description = "Optional end date in ISO format yyyy-MM-dd. Defaults to from_date + 7 days." },
                         impact_level = new { type = "string", description = "Optional impact filter: high, medium, low, all. Defaults to all." }
                     }
+                }),
+            CreateToolDefinition(
+                "get_social_feed",
+                "Get social media posts from X/Twitter by handles and/or query terms. Requires at least one of handles or query. Use list_providers to discover valid provider values.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        handles = new { type = "array", description = "Optional X handles without @, e.g. [\"Reuters\", \"FedReserve\"]", items = new { type = "string" } },
+                        query = new { type = "string", description = "Optional keyword/cashtag filter such as '$AAPL' or 'rate hike'." },
+                        max_results = new { type = "integer", description = "Optional max results (1-100). Default 10.", @default = 10 },
+                        lookback_hours = new { type = "integer", description = "Optional lookback window in hours (1-168). Default 24.", @default = 24 },
+                        provider = new { type = "string", description = "Optional social provider override. Default xtwitter." }
+                    }
                 })
         };
 
@@ -417,6 +438,11 @@ public class StockDataMcpServer
         if (string.Equals(toolName, "get_market_events", StringComparison.Ordinal))
         {
             return await _marketEventsToolHandler.HandleAsync(arguments, cancellationToken);
+        }
+
+        if (string.Equals(toolName, "get_social_feed", StringComparison.Ordinal))
+        {
+            return await _socialFeedToolHandler.HandleAsync(arguments, cancellationToken);
         }
 
         var requestedProvider = GetOptionalString(arguments, "provider", string.Empty);

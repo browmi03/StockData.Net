@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using StockData.Net.Configuration;
 using StockData.Net.McpServer.Models;
 using StockData.Net.Providers;
+using StockData.Net.Providers.SocialMedia;
 
 namespace StockData.Net.McpServer;
 
@@ -24,13 +25,17 @@ public sealed class ProviderSelectionValidator
                 "Finnhub"),
             ["alpaca"] = (
                 "alpaca",
-                "Alpaca Markets")
+                "Alpaca Markets"),
+            ["xtwitter"] = (
+                "xtwitter",
+                "X / Twitter")
         };
 
     private readonly McpConfiguration _configuration;
     private readonly HashSet<string> _registeredProviders;
     private readonly Dictionary<string, string> _aliases;
     private readonly Dictionary<string, IStockDataProvider> _providersById;
+    private readonly Dictionary<string, ISocialMediaProvider> _socialProvidersById;
 
     public ProviderSelectionValidator(McpConfiguration configuration, IEnumerable<string> registeredProviders)
         : this(configuration, registeredProviders, null)
@@ -41,6 +46,15 @@ public sealed class ProviderSelectionValidator
         McpConfiguration configuration,
         IEnumerable<string> registeredProviders,
         IEnumerable<IStockDataProvider>? providers)
+        : this(configuration, registeredProviders, providers, null)
+    {
+    }
+
+    public ProviderSelectionValidator(
+        McpConfiguration configuration,
+        IEnumerable<string> registeredProviders,
+        IEnumerable<IStockDataProvider>? providers,
+        IEnumerable<ISocialMediaProvider>? socialProviders)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _registeredProviders = new HashSet<string>(registeredProviders ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
@@ -48,9 +62,17 @@ public sealed class ProviderSelectionValidator
         _providersById = (providers ?? Enumerable.Empty<IStockDataProvider>())
             .GroupBy(provider => provider.ProviderId, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        _socialProvidersById = (socialProviders ?? Enumerable.Empty<ISocialMediaProvider>())
+            .GroupBy(provider => provider.ProviderId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
     }
 
     public ProviderValidationResult Validate(string? provider)
+    {
+        return ValidateForCategory(provider, ProviderCategory.FinancialData);
+    }
+
+    public ProviderValidationResult ValidateForCategory(string? provider, ProviderCategory category)
     {
         if (string.IsNullOrWhiteSpace(provider))
         {
@@ -73,6 +95,17 @@ public sealed class ProviderSelectionValidator
         if (!_registeredProviders.Contains(providerId))
         {
             return ProviderValidationResult.Invalid($"Provider '{normalizedInput}' is not currently available.");
+        }
+
+        var configuredProvider = _configuration.Providers.FirstOrDefault(
+            p => string.Equals(p.Id, providerId, StringComparison.OrdinalIgnoreCase));
+        if (configuredProvider is not null)
+        {
+            var providerCategory = InferCategory(configuredProvider.Type);
+            if (providerCategory != category)
+            {
+                return ProviderValidationResult.Invalid($"Provider '{normalizedInput}' is not valid for {category} requests.");
+            }
         }
 
         return ProviderValidationResult.Valid(providerId);
@@ -139,7 +172,10 @@ public sealed class ProviderSelectionValidator
                     : (CanonicalId: providerId, DisplayName: providerId);
 
                 var tier = GetTierForProviderId(providerId);
-                var supportedDataTypes = GetSupportedDataTypes(providerId, tier);
+                var category = ResolveProviderCategory(providerId);
+                var supportedDataTypes = category == ProviderCategory.SocialMedia
+                    ? GetSupportedSocialDataTypes(providerId)
+                    : GetSupportedDataTypes(providerId, tier);
 
                 var aliases = _aliases
                     .Where(kvp => string.Equals(kvp.Value, providerId, StringComparison.OrdinalIgnoreCase))
@@ -154,7 +190,8 @@ public sealed class ProviderSelectionValidator
                     Id = metadata.CanonicalId,
                     DisplayName = metadata.DisplayName,
                     Aliases = aliases,
-                    SupportedDataTypes = supportedDataTypes
+                    SupportedDataTypes = supportedDataTypes,
+                    Category = category.ToString()
                 };
             })
             .OrderBy(provider => provider.Id, StringComparer.OrdinalIgnoreCase)
@@ -262,6 +299,47 @@ public sealed class ProviderSelectionValidator
         return fallbackCapabilities
             .OrderBy(capability => capability, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    private string[] GetSupportedSocialDataTypes(string providerId)
+    {
+        if (_socialProvidersById.ContainsKey(providerId))
+        {
+            return new[] { "social_feed" };
+        }
+
+        return providerId.Equals("xtwitter", StringComparison.OrdinalIgnoreCase)
+            ? new[] { "social_feed" }
+            : Array.Empty<string>();
+    }
+
+    private ProviderCategory ResolveProviderCategory(string providerId)
+    {
+        if (_socialProvidersById.ContainsKey(providerId))
+        {
+            return ProviderCategory.SocialMedia;
+        }
+
+        var configuredProvider = _configuration.Providers.FirstOrDefault(
+            p => string.Equals(p.Id, providerId, StringComparison.OrdinalIgnoreCase));
+        if (configuredProvider is not null)
+        {
+            return InferCategory(configuredProvider.Type);
+        }
+
+        return ProviderCategory.FinancialData;
+    }
+
+    private static ProviderCategory InferCategory(string? providerType)
+    {
+        if (!string.IsNullOrWhiteSpace(providerType)
+            && providerType.Contains("x", StringComparison.OrdinalIgnoreCase)
+            && providerType.Contains("twitter", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProviderCategory.SocialMedia;
+        }
+
+        return ProviderCategory.FinancialData;
     }
 }
 
