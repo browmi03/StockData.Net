@@ -45,7 +45,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
 
             var (from, to) = ResolveDateWindow(period);
             var candles = await _client.GetHistoricalPricesAsync(ticker, from.UtcDateTime, to.UtcDateTime, cancellationToken);
-            return JsonSerializer.Serialize(MapHistoricalPrices(candles));
+            return JsonSerializer.Serialize(MapHistoricalPrices(candles, ticker));
         }, nameof(GetHistoricalPricesAsync));
     }
 
@@ -67,7 +67,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
                 sourceProvider = ProviderId,
-                Country = "US"
+                Country = InferCountryFromSymbol(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -113,7 +113,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Value,
                     item.ActionType,
                     sourceProvider = ProviderId,
-                    Country = "US"
+                    Country = InferCountryFromSymbol(ticker)
                 }),
                 stockSplits = actions.Splits.Select(item => new
                 {
@@ -123,10 +123,10 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Denominator,
                     item.ActionType,
                     sourceProvider = ProviderId,
-                    Country = "US"
+                    Country = InferCountryFromSymbol(ticker)
                 }),
                 sourceProvider = ProviderId,
-                Country = "US"
+                Country = InferCountryFromSymbol(ticker)
             };
 
             return JsonSerializer.Serialize(payload);
@@ -198,8 +198,9 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         }
     }
 
-    private static List<object> MapHistoricalPrices(List<AlphaVantageCandle> candles)
+    private static List<object> MapHistoricalPrices(List<AlphaVantageCandle> candles, string ticker)
     {
+        var country = InferCountryFromSymbol(ticker);
         var rows = new List<object>(candles.Count);
 
         foreach (var candle in candles)
@@ -213,7 +214,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 Close = candle.Close,
                 Volume = candle.Volume,
                 SourceProvider = "alphavantage",
-                Country = "US"
+                Country = country
             });
         }
 
@@ -310,5 +311,42 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         {
             throw new ArgumentException("Ticker symbol contains invalid characters.", nameof(ticker));
         }
+    }
+
+    private static string InferCountryFromSymbol(string ticker)
+    {
+        if (string.IsNullOrWhiteSpace(ticker))
+        {
+            return "Unknown";
+        }
+
+        var cleanSymbol = ticker.StartsWith("^", StringComparison.Ordinal) ? ticker[1..] : ticker;
+
+        if (cleanSymbol.EndsWith(".TO", StringComparison.OrdinalIgnoreCase)) return "Canada";
+        if (cleanSymbol.EndsWith(".V", StringComparison.OrdinalIgnoreCase)) return "Canada";
+        if (cleanSymbol.EndsWith(".CN", StringComparison.OrdinalIgnoreCase)) return "Canada";
+        if (cleanSymbol.EndsWith(".L", StringComparison.OrdinalIgnoreCase)) return "United Kingdom";
+        if (cleanSymbol.EndsWith(".IL", StringComparison.OrdinalIgnoreCase)) return "United Kingdom";
+        if (cleanSymbol.EndsWith(".AX", StringComparison.OrdinalIgnoreCase)) return "Australia";
+        if (cleanSymbol.EndsWith(".NZ", StringComparison.OrdinalIgnoreCase)) return "New Zealand";
+        if (cleanSymbol.EndsWith(".DE", StringComparison.OrdinalIgnoreCase)) return "Germany";
+        if (cleanSymbol.EndsWith(".F", StringComparison.OrdinalIgnoreCase)) return "Germany";
+        if (cleanSymbol.EndsWith(".PA", StringComparison.OrdinalIgnoreCase)) return "France";
+        if (cleanSymbol.EndsWith(".AS", StringComparison.OrdinalIgnoreCase)) return "Netherlands";
+        if (cleanSymbol.EndsWith(".SW", StringComparison.OrdinalIgnoreCase)) return "Switzerland";
+        if (cleanSymbol.EndsWith(".BR", StringComparison.OrdinalIgnoreCase)) return "Brazil";
+        if (cleanSymbol.EndsWith(".SA", StringComparison.OrdinalIgnoreCase)) return "Brazil";
+        if (cleanSymbol.EndsWith(".HK", StringComparison.OrdinalIgnoreCase)) return "Hong Kong";
+        if (cleanSymbol.EndsWith(".T", StringComparison.OrdinalIgnoreCase)) return "Japan";
+        if (cleanSymbol.EndsWith(".KS", StringComparison.OrdinalIgnoreCase)) return "South Korea";
+        if (cleanSymbol.EndsWith(".KQ", StringComparison.OrdinalIgnoreCase)) return "South Korea";
+        if (cleanSymbol.EndsWith(".SS", StringComparison.OrdinalIgnoreCase)) return "China";
+        if (cleanSymbol.EndsWith(".SZ", StringComparison.OrdinalIgnoreCase)) return "China";
+        if (cleanSymbol.EndsWith(".BO", StringComparison.OrdinalIgnoreCase)) return "India";
+        if (cleanSymbol.EndsWith(".NS", StringComparison.OrdinalIgnoreCase)) return "India";
+
+        if (cleanSymbol.Contains('.')) return "International";
+
+        return "United States";
     }
 }
