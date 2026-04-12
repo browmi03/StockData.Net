@@ -236,6 +236,63 @@ public sealed class FinnhubClient : IFinnhubClient
         }
     }
 
+    public async Task<IReadOnlyList<FinnhubEconomicCalendarEvent>> GetEconomicCalendarAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+    {
+        if (from > to)
+        {
+            throw new ArgumentException("From date cannot be after To date.", nameof(from));
+        }
+
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+            var requestUri = $"calendar/economic?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}&token={apiKey}";
+
+            using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return [];
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var payload = await JsonSerializer.DeserializeAsync<FinnhubEconomicCalendarResponse>(stream, JsonOptions, cancellationToken);
+            if (payload?.EconomicCalendar is null || payload.EconomicCalendar.Count == 0)
+            {
+                return [];
+            }
+
+            return payload.EconomicCalendar
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Event) && !string.IsNullOrWhiteSpace(entry.Date))
+                .Select(entry => new FinnhubEconomicCalendarEvent(
+                    entry.Date ?? string.Empty,
+                    entry.Event ?? string.Empty,
+                    entry.Time,
+                    entry.Impact,
+                    entry.Country,
+                    entry.Unit,
+                    entry.Actual,
+                    entry.Previous,
+                    entry.Estimate))
+                .ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"Finnhub economic calendar request failed: {sanitizedMessage}", ex);
+        }
+    }
+
     public async Task<IEnumerable<MarketNewsItem>> GetMarketNewsAsync(string category, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(category))

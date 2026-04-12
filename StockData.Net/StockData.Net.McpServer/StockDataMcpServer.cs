@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using StockData.Net;
 using StockData.Net.Configuration;
+using StockData.Net.Deduplication;
 using StockData.Net.Models;
 using StockData.Net.McpServer.Models;
 using StockData.Net.Providers;
@@ -19,6 +20,7 @@ namespace StockData.Net.McpServer;
 public class StockDataMcpServer
 {
     private readonly StockDataProviderRouter _router;
+    private readonly MarketEventsToolHandler _marketEventsToolHandler;
     private readonly ProviderSelectionValidator _providerValidator;
     private readonly ILogger<StockDataMcpServer>? _logger;
     private readonly JsonSerializerOptions _jsonOptions;
@@ -33,9 +35,11 @@ public class StockDataMcpServer
     public StockDataMcpServer(
         StockDataProviderRouter router,
         McpConfiguration configuration,
-        ILogger<StockDataMcpServer>? logger = null)
+        ILogger<StockDataMcpServer>? logger = null,
+        MarketEventsToolHandler? marketEventsToolHandler = null)
     {
         _router = router;
+        _marketEventsToolHandler = marketEventsToolHandler ?? new MarketEventsToolHandler(Array.Empty<IMarketEventsProvider>(), new MarketEventDeduplicator());
         _providerValidator = new ProviderSelectionValidator(
             configuration,
             _router.GetRegisteredProviderIds(),
@@ -356,6 +360,21 @@ public class StockDataMcpServer
                         provider = new { type = "string", description = "Optional provider override. Use the 'list_providers' tool to discover valid values." }
                     },
                     required = new[] { "ticker", "recommendation_type" }
+                }),
+            CreateToolDefinition(
+                "get_market_events",
+                "Get market-moving events including scheduled macro announcements and breaking events. Supports filtering by category, event_type, date window, and impact_level.",
+                new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        category = new { type = "string", description = "Optional category filter: fed, treasury, geopolitical, regulatory, central_bank, institutional, all. Defaults to all." },
+                        event_type = new { type = "string", description = "Optional event type filter: scheduled, breaking, all. Defaults to all." },
+                        from_date = new { type = "string", description = "Optional start date in ISO format yyyy-MM-dd. Defaults to current UTC date." },
+                        to_date = new { type = "string", description = "Optional end date in ISO format yyyy-MM-dd. Defaults to from_date + 7 days." },
+                        impact_level = new { type = "string", description = "Optional impact filter: high, medium, low, all. Defaults to all." }
+                    }
                 })
         };
 
@@ -394,6 +413,11 @@ public class StockDataMcpServer
         }
 
         var arguments = paramsElement.Value.GetProperty("arguments");
+
+        if (string.Equals(toolName, "get_market_events", StringComparison.Ordinal))
+        {
+            return await _marketEventsToolHandler.HandleAsync(arguments, cancellationToken);
+        }
 
         var requestedProvider = GetOptionalString(arguments, "provider", string.Empty);
         var validation = _providerValidator.Validate(requestedProvider);
@@ -569,6 +593,7 @@ public class StockDataMcpServer
             "get_option_expiration_dates" => "OptionExpirationDates",
             "get_option_chain" => "OptionChain",
             "get_recommendations" => "Recommendations",
+            "get_market_events" => "MarketEvents",
             _ => "StockInfo"
         };
     }

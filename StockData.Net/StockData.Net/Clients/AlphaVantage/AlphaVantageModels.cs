@@ -5,6 +5,7 @@ namespace StockData.Net.Clients.AlphaVantage;
 public record AlphaVantageQuote(double Price, double Change, double PercentChange, long Timestamp, string? Country = null);
 public record AlphaVantageCandle(long Timestamp, double Open, double High, double Low, double Close, long Volume);
 public record AlphaVantageNewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers, string? Country = null);
+public record AlphaVantageMacroNewsItem(string Title, string Source, string Url, string Summary, string? TimePublished, string? OverallSentimentLabel, IReadOnlyList<string> Topics, IReadOnlyList<string> RelatedTickers);
 public record NewsItem(string Title, string Source, string Url, string Summary, long Timestamp, List<string> RelatedTickers, string? Country = null);
 public record StockActionItem(DateTime Date, string ActionType, decimal Value, decimal? Numerator, decimal? Denominator);
 public record StockActionsResult(IReadOnlyList<StockActionItem> Dividends, IReadOnlyList<StockActionItem> Splits);
@@ -95,8 +96,20 @@ internal sealed class AlphaVantageNewsEntry
     [JsonPropertyName("time_published")]
     public string? TimePublished { get; init; }
 
+    [JsonPropertyName("overall_sentiment_label")]
+    public string? OverallSentimentLabel { get; init; }
+
+    [JsonPropertyName("topics")]
+    public List<AlphaVantageTopic>? Topics { get; init; }
+
     [JsonPropertyName("ticker_sentiment")]
     public List<AlphaVantageTickerSentiment>? TickerSentiment { get; init; }
+}
+
+internal sealed class AlphaVantageTopic
+{
+    [JsonPropertyName("topic")]
+    public string? Topic { get; init; }
 }
 
 internal sealed class AlphaVantageTickerSentiment

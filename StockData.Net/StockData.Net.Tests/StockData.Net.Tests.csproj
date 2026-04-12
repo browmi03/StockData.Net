@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\StockData.Net\StockData.Net.csproj" />
+    <ProjectReference Include="..\StockData.Net.McpServer\StockData.Net.McpServer.csproj" />
   </ItemGroup>
 
 </Project>

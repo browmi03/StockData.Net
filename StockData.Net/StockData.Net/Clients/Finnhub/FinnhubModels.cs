@@ -5,6 +5,7 @@ namespace StockData.Net.Clients.Finnhub;
 public record FinnhubQuote(double CurrentPrice, double Change, double PercentChange, double High, double Low, double Open, double PreviousClose, long Timestamp, string? Country = null);
 public record FinnhubCandle(long Timestamp, double Open, double High, double Low, double Close, long Volume);
 public record FinnhubNewsItem(long Id, string Headline, string Source, string Url, string Summary, long Datetime, List<string> RelatedTickers, string? Country = null);
+public record FinnhubEconomicCalendarEvent(string Date, string Event, string? Time, int? Impact, string? Country, string? Unit, string? Actual, string? Previous, string? Estimate);
 public record MarketNewsItem(long Id, string Category, long Datetime, string Headline, string Image, string Related, string Source, string Summary, string Url, string? Country = null);
 public record RecommendationTrend(int Buy, int Hold, string Period, int Sell, int StrongBuy, int StrongSell, string Symbol);
 
@@ -135,4 +136,40 @@ internal sealed class FinnhubRecommendationResponse
 
 	[JsonPropertyName("symbol")]
 	public string? Symbol { get; init; }
+}
+
+internal sealed class FinnhubEconomicCalendarResponse
+{
+	[JsonPropertyName("economicCalendar")]
+	public List<FinnhubEconomicCalendarEventResponse>? EconomicCalendar { get; init; }
+}
+
+internal sealed class FinnhubEconomicCalendarEventResponse
+{
+	[JsonPropertyName("date")]
+	public string? Date { get; init; }
+
+	[JsonPropertyName("event")]
+	public string? Event { get; init; }
+
+	[JsonPropertyName("time")]
+	public string? Time { get; init; }
+
+	[JsonPropertyName("impact")]
+	public int? Impact { get; init; }
+
+	[JsonPropertyName("country")]
+	public string? Country { get; init; }
+
+	[JsonPropertyName("unit")]
+	public string? Unit { get; init; }
+
+	[JsonPropertyName("actual")]
+	public string? Actual { get; init; }
+
+	[JsonPropertyName("prev")]
+	public string? Previous { get; init; }
+
+	[JsonPropertyName("estimate")]
+	public string? Estimate { get; init; }
 }

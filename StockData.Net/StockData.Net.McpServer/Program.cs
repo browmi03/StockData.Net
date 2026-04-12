@@ -48,6 +48,14 @@ builder.Services.AddSingleton<ISymbolTranslator, SymbolTranslator>();
 // Register news deduplication components
 builder.Services.AddSingleton<INewsDeduplicationStrategy, LevenshteinSimilarityStrategy>();
 builder.Services.AddSingleton<NewsDeduplicator>();
+builder.Services.AddSingleton<MarketEventDeduplicator>();
+builder.Services.AddSingleton<MarketEventsToolHandler>(sp =>
+{
+    var providers = sp.GetServices<IMarketEventsProvider>();
+    var deduplicator = sp.GetRequiredService<MarketEventDeduplicator>();
+    var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<MarketEventsToolHandler>>();
+    return new MarketEventsToolHandler(providers, deduplicator, logger);
+});
 
 // Register router with all providers
 builder.Services.AddSingleton<StockDataProviderRouter>(sp =>
@@ -66,7 +74,8 @@ builder.Services.AddSingleton<StockDataMcpServer>(sp =>
     var router = sp.GetRequiredService<StockDataProviderRouter>();
     var configuration = sp.GetRequiredService<McpConfiguration>();
     var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<StockDataMcpServer>>();
-    return new StockDataMcpServer(router, configuration, logger);
+    var marketEventsHandler = sp.GetRequiredService<MarketEventsToolHandler>();
+    return new StockDataMcpServer(router, configuration, logger, marketEventsHandler);
 });
 
 var host = builder.Build();
@@ -98,6 +107,7 @@ static void RegisterFinnhubProvider(IServiceCollection services, McpConfiguratio
             new SecretValue(apiKey),
             providerConfig.RateLimit));
     services.AddSingleton<IStockDataProvider, FinnhubProvider>();
+    services.AddSingleton<IMarketEventsProvider, FinnhubMarketEventsProvider>();
 }
 
 static void RegisterAlphaVantageProvider(IServiceCollection services, McpConfiguration config)
@@ -123,6 +133,7 @@ static void RegisterAlphaVantageProvider(IServiceCollection services, McpConfigu
             new SecretValue(apiKey),
             providerConfig.RateLimit));
     services.AddSingleton<IStockDataProvider, AlphaVantageProvider>();
+    services.AddSingleton<IMarketEventsProvider, AlphaVantageMarketEventsProvider>();
 }
 
 static void RegisterAlpacaProvider(IServiceCollection services, McpConfiguration config)
