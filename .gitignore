@@ -1,14 +1,17 @@
 # Build / test artifacts
 TestResults/
+out.txt
 
-# GitHub agents
+# GitHub Copilot customization (managed by AGENT_DEFINITIONS repo)
 .github/agents/
+.github/hooks/
+.github/instructions/
+.github/prompts/
+.github/skills/
+.github/copilot-instructions.md
 
-# Agent reference documentation (read-only reference)
+# Documentation templates (managed by AGENT_DEFINITIONS repo)
 docs/templates/
-docs/coding-standards/
-docs/Git-Basic-Workflow.md
-docs/documentation-content-policy.md
 
 # Local secrets (API keys)
 secrets.json
