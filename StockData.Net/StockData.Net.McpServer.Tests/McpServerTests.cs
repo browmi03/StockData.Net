@@ -83,7 +83,7 @@ public class StockDataMcpServerTests
     }
 
     [TestMethod]
-    public async Task HandleRequestAsync_ToolsList_ReturnsAll11Tools()
+    public async Task HandleRequestAsync_ToolsList_ReturnsAll12Tools()
     {
         // Arrange
         var request = new McpRequest
@@ -112,6 +112,7 @@ public class StockDataMcpServerTests
         StringAssert.Contains(resultJson, "get_option_expiration_dates");
         StringAssert.Contains(resultJson, "get_option_chain");
         StringAssert.Contains(resultJson, "get_recommendations");
+        StringAssert.Contains(resultJson, "get_market_events");
         StringAssert.Contains(resultJson, "list_providers");
         Assert.DoesNotContain("get_yahoo_finance_news", resultJson);
     }

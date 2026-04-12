@@ -267,6 +267,89 @@ public sealed class AlphaVantageClient : IAlphaVantageClient
         }
     }
 
+    public async Task<IReadOnlyList<AlphaVantageMacroNewsItem>> GetMacroNewsSentimentAsync(
+        string topics,
+        DateTime from,
+        DateTime to,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(topics))
+        {
+            throw new ArgumentException("Topics cannot be empty or whitespace.", nameof(topics));
+        }
+
+        if (from > to)
+        {
+            throw new ArgumentException("From date cannot be after To date.", nameof(from));
+        }
+
+        try
+        {
+            await AcquireRateLimitPermitAsync(cancellationToken);
+
+            var encodedTopics = Uri.EscapeDataString(topics.Trim());
+            var apiKey = Uri.EscapeDataString(_apiKey.ExposeSecret());
+            var fromUtc = from.ToUniversalTime();
+            var toUtc = to.ToUniversalTime();
+            var requestUri =
+                $"query?function=NEWS_SENTIMENT&topics={encodedTopics}&time_from={fromUtc:yyyyMMddTHHmmss}&time_to={toUtc:yyyyMMddTHHmmss}&limit=50&apikey={apiKey}";
+
+            using var response = await _httpClient.GetAsync(requestUri, cancellationToken);
+            if (response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return [];
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var payload = await JsonSerializer.DeserializeAsync<AlphaVantageNewsResponse>(stream, JsonOptions, cancellationToken);
+            if (payload is null)
+            {
+                return [];
+            }
+
+            ThrowIfRateLimited(payload.Note ?? payload.Information);
+
+            if (payload.Feed is null || payload.Feed.Count == 0)
+            {
+                return [];
+            }
+
+            return payload.Feed
+                .Where(row => !string.IsNullOrWhiteSpace(row.Url) && !string.IsNullOrWhiteSpace(row.Title))
+                .Select(row => new AlphaVantageMacroNewsItem(
+                    row.Title ?? string.Empty,
+                    row.Source ?? string.Empty,
+                    row.Url ?? string.Empty,
+                    row.Summary ?? string.Empty,
+                    row.TimePublished,
+                    row.OverallSentimentLabel,
+                    row.Topics?
+                        .Select(topic => topic.Topic)
+                        .Where(topic => !string.IsNullOrWhiteSpace(topic))
+                        .Select(topic => topic!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList() ?? [],
+                    row.TickerSentiment?
+                        .Select(ticker => ticker.Ticker)
+                        .Where(ticker => !string.IsNullOrWhiteSpace(ticker))
+                        .Select(ticker => ticker!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList() ?? []))
+                .ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var sanitizedMessage = SensitiveDataSanitizer.Sanitize(ex.Message);
+            throw new InvalidOperationException($"AlphaVantage macro news request failed: {sanitizedMessage}", ex);
+        }
+    }
+
     public async Task<IEnumerable<NewsItem>> GetMarketNewsAsync(CancellationToken cancellationToken = default)
     {
         try
