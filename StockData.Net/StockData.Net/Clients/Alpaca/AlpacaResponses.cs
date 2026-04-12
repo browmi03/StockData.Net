@@ -60,6 +60,9 @@ internal sealed class AlpacaQuoteResponseItem
 
     [JsonPropertyName("t")]
     public DateTime Timestamp { get; init; }
+
+    [JsonPropertyName("country")]
+    public string? Country { get; init; }
 }
 
 internal sealed class AlpacaNewsResponse
@@ -93,4 +96,7 @@ internal sealed class AlpacaNewsResponseItem
 
     [JsonPropertyName("symbols")]
     public List<string>? Symbols { get; init; }
+
+    [JsonPropertyName("country")]
+    public string? Country { get; init; }
 }
