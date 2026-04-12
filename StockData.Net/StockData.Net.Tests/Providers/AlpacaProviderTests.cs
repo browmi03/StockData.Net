@@ -140,6 +140,7 @@ public class AlpacaProviderTests
         Assert.AreEqual("AAPL", doc.RootElement.GetProperty("symbol").GetString());
         Assert.AreEqual(101.1d, doc.RootElement.GetProperty("midPrice").GetDouble(), 0.0001d);
         Assert.AreEqual("alpaca", doc.RootElement.GetProperty("sourceProvider").GetString());
+        Assert.AreEqual("US", doc.RootElement.GetProperty("Country").GetString());
     }
 
     [TestMethod]
