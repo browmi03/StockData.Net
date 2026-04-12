@@ -67,7 +67,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 percentChange = quote.PercentChange,
                 timestamp = DateTimeOffset.FromUnixTimeSeconds(quote.Timestamp).UtcDateTime,
                 sourceProvider = ProviderId,
-                country = "US" // Default country, can be enhanced with actual data
+                Country = "US"
             };
 
             return JsonSerializer.Serialize(payload);
@@ -113,7 +113,7 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Value,
                     item.ActionType,
                     sourceProvider = ProviderId,
-                    country = "US" // Default country, can be enhanced with actual data
+                    Country = "US"
                 }),
                 stockSplits = actions.Splits.Select(item => new
                 {
@@ -123,10 +123,10 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                     item.Denominator,
                     item.ActionType,
                     sourceProvider = ProviderId,
-                    country = "US" // Default country, can be enhanced with actual data
+                    Country = "US"
                 }),
                 sourceProvider = ProviderId,
-                country = "US" // Default country, can be enhanced with actual data
+                Country = "US"
             };
 
             return JsonSerializer.Serialize(payload);
@@ -212,7 +212,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
                 Low = candle.Low,
                 Close = candle.Close,
                 Volume = candle.Volume,
-                SourceProvider = "alphavantage"
+                SourceProvider = "alphavantage",
+                Country = "US"
             });
         }
 
