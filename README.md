@@ -4,7 +4,7 @@
 
 StockData.Net is an MCP server that brings comprehensive financial market data to GitHub Copilot, Claude, VS Code, and other AI assistants. Ask questions about stock prices, financial statements, options data, and more—all from your favorite AI tool.
 
-**Last Updated:** 2026-02-28
+**Last Updated:** 2026-04-12
 
 ---
 
@@ -35,6 +35,8 @@ StockData.Net is an MCP server that brings comprehensive financial market data t
   - Analyst recommendations and upgrades/downgrades
   - Stock actions (dividends and splits)
   - Market news and articles
+  - Market-moving events (Fed decisions, economic calendar releases, earnings announcements, geopolitical events)
+  - Social media sentiment feed from X/Twitter for financial accounts and ticker keyword searches
 
 - **🤖 AI-First Design**
   - Works seamlessly with GitHub Copilot, Claude Desktop, and VS Code
@@ -83,6 +85,8 @@ Once configured, ask your AI assistant:
 - "Get the options chain for SPY"
 - "Which companies are the biggest holders of Google stock?"
 - "Show me the latest financial news"
+- "Are there any Fed rate decisions or major economic events this week?"
+- "What are financial analysts saying about Tesla on X/Twitter?"
 
 ---
 
@@ -125,7 +129,11 @@ Once configured, ask your AI assistant:
 ```json
 {
   "github.copilot.chat.mcp.servers": {
+
+Set the following environment variable before launching the MCP server:
+
     "StockData": {
+
       "type": "stdio",
       "command": "C:/Tools/StockData.Net/StockData.Net.McpServer.exe",
       "args": []
@@ -144,12 +152,13 @@ Once configured, ask your AI assistant:
 
 ## Configuring Market Data Providers
 
-StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports four market data providers with different strengths and capabilities:
+StockData.Net MCP Server uses a **multi-provider architecture** with intelligent failover and routing. The server supports five market data providers with different strengths and capabilities:
 
 - **Yahoo Finance** - Free, no API key required, used as default fallback
 - **Finnhub** - Real-time stock data with generous free tier
 - **Alpha Vantage** - Historical time series and forex data
 - **Alpaca Markets** - FinRL-compatible historical bars, latest quotes, and news (free and paid tiers)
+- **X/Twitter** - Social media feed for financial commentary and sentiment (requires X API Bearer Token; free and paid tiers)
 
 Each provider can be independently enabled/disabled and configured with its own API key and rate limits. The server automatically routes requests to the best available provider based on data type and implements automatic failover if a provider fails.
 
@@ -466,6 +475,70 @@ Set environment variables before launching the MCP server:
 
 ---
 
+#### X/Twitter Social Feed
+
+**Description:** Real-time social media posts from monitored X (Twitter) accounts and keyword/ticker searches. Enables sentiment monitoring from financial institutions, central banks, and analysts.
+
+**Free Tier:** Limited to recent posts (last 7 days); 10 requests per 15 minutes
+
+**Paid Tier:** Broader historical access and higher rate limits
+
+**Registration:**
+
+1. Visit [https://developer.x.com/](https://developer.x.com/)
+2. Create a developer account and project
+3. Generate a Bearer Token from your app's Keys and Tokens page
+
+**Configuration:**
+
+Add your X API Bearer Token to your `appsettings.local.json` using one of these methods:
+
+**Option 1 - providerCredentials section (Recommended):**
+
+```json
+{
+  "providerCredentials": {
+    "xtwitter": {
+      "bearerToken": "your-x-bearer-token-here"
+    }
+  }
+}
+```
+
+**Option 2 - Environment variable:**
+
+```json
+{
+  "providers": [
+    {
+      "id": "xtwitter",
+      "type": "XTwitterProvider",
+      "enabled": true,
+      "priority": 1,
+      "tier": "free",
+      "settings": {
+        "bearerToken": "${X_BEARER_TOKEN}",
+        "baseUrl": "https://api.twitter.com/2/"
+      },
+      "rateLimit": {
+        "enabled": true,
+        "requestsPerMinute": 10
+      }
+    }
+  ]
+}
+```
+
+Set the following environment variable before launching the MCP server:
+
+- `X_BEARER_TOKEN`
+
+**Supported capabilities:** `social_feed`
+
+---
+
+---
+
 ### Enable or Disable Providers
 
 Each provider in `appsettings.json` has an `enabled` flag:
@@ -509,6 +582,7 @@ Provider order is controlled by `priority` values and `routing.dataTypeRouting.*
 | Finnhub | 60 requests/min | 60 requests/min | Configurable via `rateLimit.requestsPerMinute` |
 | Alpha Vantage | 5 requests/min | 5 req/min (500/day) | Has daily limit in addition to per-minute limit |
 | Alpaca Markets | 200 requests/min | 200 requests/min | Requires both API key ID and secret key |
+| X/Twitter | 10 requests/15 min | Limited — recent posts only | Requires Bearer Token; free tier restricts lookback window |
 
 ---
 
@@ -574,6 +648,8 @@ Once you've configured the MCP server, here are the types of queries you can ask
 - "Get the P/E ratio for Meta Platforms"
 - "What's Tesla's market capitalization?"
 
+> **Tip:** StockData.Net automatically infers the listing country from ticker exchange suffixes (e.g., `RY.TO` → Canada, `HSBA.L` → United Kingdom). International tickers are supported across all providers.
+
 ### Financial Statements
 - "Show me Apple's quarterly income statement"
 - "What was Microsoft's annual cash flow?"
@@ -603,6 +679,19 @@ Once you've configured the MCP server, here are the types of queries you can ask
 - "Show me market headlines for today"
 - "Are there any earnings announcements coming up?"
 - "Get recent stock splits or dividend announcements"
+
+### Market-Moving Events
+- "What major economic events are scheduled for this week?"
+- "Show me upcoming Fed decisions and FOMC meetings"
+- "Are there any high-impact geopolitical events this month?"
+- "Get all central bank events for the next 30 days"
+- "What breaking events could affect the S&P 500 today?"
+
+### Social Media Sentiment (X/Twitter)
+- "What is the Federal Reserve saying on X/Twitter?"
+- "Get recent posts about $AAPL from financial accounts"
+- "Show me X/Twitter sentiment around Tesla earnings"
+- "What are analysts posting about the market today?"
 
 ---
 
