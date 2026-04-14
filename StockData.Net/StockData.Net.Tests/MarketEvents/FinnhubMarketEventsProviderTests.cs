@@ -92,5 +92,98 @@ public class FinnhubMarketEventsProviderTests
         Assert.HasCount(1, result);
         Assert.AreEqual("breaking", result[0].EventType);
         Assert.AreEqual("finnhub-news-42", result[0].EventId);
+        Assert.AreEqual("medium", result[0].ImpactLevel);
+    }
+
+    [TestMethod]
+    public async Task GivenEconomicCalendarFails_WhenFetchingAllEvents_ThenStillReturnsBreakingNews()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = new Mock<IFinnhubClient>();
+        client.Setup(c => c.GetEconomicCalendarAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("calendar temporarily unavailable"));
+        client.Setup(c => c.GetMarketNewsAsync("general", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new MarketNewsItem(100, "general", now.ToUnixTimeSeconds(), "Market crisis escalates", string.Empty, "SPY", "Reuters", "Summary", "https://example.com")
+            ]);
+
+        var provider = new FinnhubMarketEventsProvider(client.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<FinnhubMarketEventsProvider>.Instance);
+        var result = await provider.GetEventsAsync(new MarketEventsQuery
+        {
+            EventType = EventType.All,
+            FromDate = DateOnly.FromDateTime(now.UtcDateTime.AddDays(-1)),
+            ToDate = DateOnly.FromDateTime(now.UtcDateTime.AddDays(1))
+        });
+
+        Assert.HasCount(1, result);
+        Assert.AreEqual("breaking", result[0].EventType);
+        Assert.AreEqual("high", result[0].ImpactLevel);
+    }
+
+    [TestMethod]
+    public async Task GivenBreakingNewsFails_WhenFetchingAllEvents_ThenStillReturnsScheduledEvents()
+    {
+        var client = new Mock<IFinnhubClient>();
+        client.Setup(c => c.GetEconomicCalendarAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new FinnhubEconomicCalendarEvent("2026-04-12", "GDP release", "18:00", 2, "US", null, null, null, null)
+            ]);
+        client.Setup(c => c.GetMarketNewsAsync("general", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("news unavailable"));
+
+        var provider = new FinnhubMarketEventsProvider(client.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<FinnhubMarketEventsProvider>.Instance);
+        var result = await provider.GetEventsAsync(new MarketEventsQuery
+        {
+            EventType = EventType.All,
+            FromDate = new DateOnly(2026, 4, 12),
+            ToDate = new DateOnly(2026, 4, 12)
+        });
+
+        Assert.HasCount(1, result);
+        Assert.AreEqual("scheduled", result[0].EventType);
+    }
+
+    [TestMethod]
+    public async Task GivenEconomicEvent_WhenMapped_ThenEventIdIncludesDateComponent()
+    {
+        var client = new Mock<IFinnhubClient>();
+        client.Setup(c => c.GetEconomicCalendarAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new FinnhubEconomicCalendarEvent("2026-05-01", "CPI report", "08:30", 2, "US", null, null, null, null)
+            ]);
+
+        var provider = new FinnhubMarketEventsProvider(client.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<FinnhubMarketEventsProvider>.Instance);
+        var result = await provider.GetEventsAsync(new MarketEventsQuery
+        {
+            EventType = EventType.Scheduled,
+            FromDate = new DateOnly(2026, 5, 1),
+            ToDate = new DateOnly(2026, 5, 1)
+        });
+
+        StringAssert.Contains(result[0].EventId, "2026-05-01");
+    }
+
+    [TestMethod]
+    [DataRow("Emergency crisis response announced", "high")]
+    [DataRow("Fed rate outlook updated", "medium")]
+    [DataRow("Company opens new office", "low")]
+    public async Task GivenBreakingHeadline_WhenMapping_ThenInfersImpactLevel(string headline, string expectedImpact)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var client = new Mock<IFinnhubClient>();
+        client.Setup(c => c.GetMarketNewsAsync("general", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new MarketNewsItem(500, "general", now.ToUnixTimeSeconds(), headline, string.Empty, "SPY", "Reuters", "Summary", "https://example.com")
+            ]);
+
+        var provider = new FinnhubMarketEventsProvider(client.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<FinnhubMarketEventsProvider>.Instance);
+        var result = await provider.GetEventsAsync(new MarketEventsQuery
+        {
+            EventType = EventType.Breaking,
+            FromDate = DateOnly.FromDateTime(now.UtcDateTime.AddDays(-1)),
+            ToDate = DateOnly.FromDateTime(now.UtcDateTime.AddDays(1))
+        });
+
+        Assert.AreEqual(expectedImpact, result[0].ImpactLevel);
     }
 }

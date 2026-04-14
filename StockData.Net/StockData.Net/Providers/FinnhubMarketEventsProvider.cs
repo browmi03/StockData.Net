@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using StockData.Net.Clients.Finnhub;
 using StockData.Net.Models.Events;
+using StockData.Net.Security;
 
 namespace StockData.Net.Providers;
 
@@ -34,25 +35,49 @@ public sealed class FinnhubMarketEventsProvider : IMarketEventsProvider
 
         if (query.EventType is EventType.All or EventType.Scheduled)
         {
-            var economicEvents = await _client.GetEconomicCalendarAsync(query.FromDate, query.ToDate, cancellationToken);
-            results.AddRange(economicEvents.Select(MapEconomicEvent));
+            try
+            {
+                var economicEvents = await _client.GetEconomicCalendarAsync(query.FromDate, query.ToDate, cancellationToken);
+                results.AddRange(economicEvents.Select(MapEconomicEvent));
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var sanitized = SensitiveDataSanitizer.Sanitize(ex.Message);
+                _logger.LogWarning("Finnhub economic calendar fetch failed; continuing with breaking news only. Reason: {Reason}", sanitized);
+            }
         }
 
         if (query.EventType is EventType.All or EventType.Breaking)
         {
-            var news = await _client.GetMarketNewsAsync("general", cancellationToken);
-            var from = query.FromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-            var to = query.ToDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
-
-            foreach (var item in news)
+            try
             {
-                var eventTime = DateTimeOffset.FromUnixTimeSeconds(item.Datetime).UtcDateTime;
-                if (eventTime < from || eventTime > to)
-                {
-                    continue;
-                }
+                var news = await _client.GetMarketNewsAsync("general", cancellationToken);
+                var from = query.FromDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+                var to = query.ToDate.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
 
-                results.Add(MapBreakingEvent(item));
+                foreach (var item in news)
+                {
+                    var eventTime = DateTimeOffset.FromUnixTimeSeconds(item.Datetime).UtcDateTime;
+                    if (eventTime < from || eventTime > to)
+                    {
+                        continue;
+                    }
+
+                    results.Add(MapBreakingEvent(item));
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                var sanitized = SensitiveDataSanitizer.Sanitize(ex.Message);
+                _logger.LogWarning("Finnhub breaking news fetch failed. Reason: {Reason}", sanitized);
             }
         }
 
@@ -67,7 +92,7 @@ public sealed class FinnhubMarketEventsProvider : IMarketEventsProvider
 
         return new MarketEvent
         {
-            EventId = $"finnhub-eco-{title.ToLowerInvariant()}",
+            EventId = $"finnhub-eco-{source.Date}-{title.ToLowerInvariant()}",
             Title = title,
             Description = null,
             EventType = "scheduled",
@@ -92,13 +117,49 @@ public sealed class FinnhubMarketEventsProvider : IMarketEventsProvider
             Description = string.IsNullOrWhiteSpace(source.Summary) ? null : source.Summary,
             EventType = "breaking",
             Category = InferCategory(title),
-            ImpactLevel = null,
+            ImpactLevel = InferBreakingImpactLevel(title),
             EventTime = DateTimeOffset.FromUnixTimeSeconds(source.Datetime),
             Source = "Finnhub",
             SourceUrl = string.IsNullOrWhiteSpace(source.Url) ? null : source.Url,
             AffectedMarkets = [],
             Sentiment = null
         };
+    }
+
+    private static string? InferBreakingImpactLevel(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var lower = text.ToLowerInvariant();
+
+        if (lower.Contains("crisis", StringComparison.Ordinal)
+            || lower.Contains("crash", StringComparison.Ordinal)
+            || lower.Contains("recession", StringComparison.Ordinal)
+            || lower.Contains("emergency", StringComparison.Ordinal)
+            || lower.Contains("default", StringComparison.Ordinal)
+            || lower.Contains("collapse", StringComparison.Ordinal)
+            || lower.Contains("war", StringComparison.Ordinal)
+            || lower.Contains("sanction", StringComparison.Ordinal))
+        {
+            return "high";
+        }
+
+        if (lower.Contains("rate", StringComparison.Ordinal)
+            || lower.Contains("inflation", StringComparison.Ordinal)
+            || lower.Contains("gdp", StringComparison.Ordinal)
+            || lower.Contains("earnings", StringComparison.Ordinal)
+            || lower.Contains("fed", StringComparison.Ordinal)
+            || lower.Contains("fomc", StringComparison.Ordinal)
+            || lower.Contains("interest", StringComparison.Ordinal)
+            || lower.Contains("tariff", StringComparison.Ordinal))
+        {
+            return "medium";
+        }
+
+        return "low";
     }
 
     private static DateTimeOffset ParseEconomicEventTime(string dateText, string? timeText)

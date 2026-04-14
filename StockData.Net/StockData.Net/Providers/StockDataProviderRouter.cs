@@ -915,6 +915,8 @@ public class StockDataProviderRouter
             TierAwareNotSupportedException => ProviderErrorType.NotSupported,
             NotSupportedException => ProviderErrorType.NotSupported,
             TaskCanceledException or TimeoutException => ProviderErrorType.Timeout,
+            HttpRequestException httpEx when httpEx.StatusCode.HasValue && ((int)httpEx.StatusCode.Value == 401 || (int)httpEx.StatusCode.Value == 403)
+                => ProviderErrorType.AuthenticationError,
             HttpRequestException httpEx when httpEx.StatusCode.HasValue && (int)httpEx.StatusCode.Value == 429 
                 => ProviderErrorType.RateLimitExceeded,
             HttpRequestException => ProviderErrorType.NetworkError,

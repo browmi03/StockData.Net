@@ -39,7 +39,7 @@ public class AlphaVantageMarketEventsProviderTests
         Assert.AreEqual("AlphaVantage", result[0].Source);
         Assert.AreEqual("positive", result[0].Sentiment);
         Assert.AreEqual("fed", result[0].Category);
-        Assert.IsNull(result[0].ImpactLevel);
+        Assert.AreEqual("high", result[0].ImpactLevel);
     }
 
     [TestMethod]
@@ -73,5 +73,30 @@ public class AlphaVantageMarketEventsProviderTests
 
         Assert.IsNull(result[0].Sentiment);
         Assert.IsNull(result[0].ImpactLevel);
+    }
+
+    [TestMethod]
+    [DataRow("Bullish", "high")]
+    [DataRow("Bearish", "high")]
+    [DataRow("Somewhat-Bullish", "medium")]
+    [DataRow("Somewhat-Bearish", "medium")]
+    [DataRow("Neutral", "low")]
+    public async Task GivenSentimentLabel_WhenMapping_ThenInfersImpactLevel(string sentiment, string expectedImpact)
+    {
+        var client = new Mock<IAlphaVantageClient>();
+        client.Setup(c => c.GetMacroNewsSentimentAsync(It.IsAny<string>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new AlphaVantageMacroNewsItem("Event", "Alpha", "https://example.com/impact", "", "20260412T180000", sentiment, ["ECONOMY_MACRO"], [])
+            ]);
+
+        var provider = new AlphaVantageMarketEventsProvider(client.Object, Microsoft.Extensions.Logging.Abstractions.NullLogger<AlphaVantageMarketEventsProvider>.Instance);
+        var result = await provider.GetEventsAsync(new MarketEventsQuery
+        {
+            EventType = EventType.Breaking,
+            FromDate = new DateOnly(2026, 4, 12),
+            ToDate = new DateOnly(2026, 4, 12)
+        });
+
+        Assert.AreEqual(expectedImpact, result[0].ImpactLevel);
     }
 }

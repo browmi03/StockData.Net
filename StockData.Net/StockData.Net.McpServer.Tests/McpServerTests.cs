@@ -32,6 +32,7 @@ public class StockDataMcpServerTests
             "stock_info",
             "news",
             "market_news",
+            "market_events",
             "stock_actions",
             "financial_statement",
             "holder_info",
@@ -365,7 +366,7 @@ public class StockDataMcpServerTests
         CollectionAssert.Contains(aliases, "alpha_vantage");
 
         var supportedDataTypes = alphaVantage.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
-        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news", "market_news", "stock_actions" }, supportedDataTypes);
+        CollectionAssert.AreEquivalent(new[] { "historical_prices", "stock_info", "news", "market_news", "stock_actions", "market_events" }, supportedDataTypes);
     }
 
     [TestMethod]
@@ -382,7 +383,7 @@ public class StockDataMcpServerTests
         CollectionAssert.Contains(aliases, "finnhub");
 
         var supportedDataTypes = finnhub.GetProperty("supportedDataTypes").EnumerateArray().Select(item => item.GetString()).Where(value => value != null).Cast<string>().ToArray();
-        CollectionAssert.AreEquivalent(new[] { "stock_info", "news", "market_news", "recommendations" }, supportedDataTypes);
+        CollectionAssert.AreEquivalent(new[] { "stock_info", "news", "market_news", "market_events", "recommendations" }, supportedDataTypes);
     }
 
     [TestMethod]
@@ -1709,6 +1710,26 @@ public class StockDataMcpServerTests
         StringAssert.Contains(message, "[REDACTED]");
     }
 
+    [TestMethod]
+    public void FormatInvestorFriendlyMessage_WhenAuthenticationFailurePresent_IncludesApiKeyGuidance()
+    {
+        var failover = new ProviderFailoverException(
+            "StockInfo",
+            new Dictionary<string, Exception>
+            {
+                ["finnhub"] = new HttpRequestException("Response status code does not indicate success: 401 (Unauthorized).")
+            },
+            new List<string> { "finnhub" },
+            Array.Empty<TierFailureDetail>());
+
+        var message = StockDataMcpServer.FormatInvestorFriendlyMessage(failover);
+
+        StringAssert.Contains(message, "API key");
+        StringAssert.Contains(message, "configured correctly");
+        Assert.IsFalse(message.Contains("apikey=", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(message.Contains("token=", StringComparison.OrdinalIgnoreCase));
+    }
+
     #endregion
 
     #region Helper Methods
@@ -1956,13 +1977,15 @@ public class StockDataMcpServerTests
                     "stock_info",
                     "news",
                     "market_news",
-                    "stock_actions"
+                    "stock_actions",
+                    "market_events"
                 },
                 "finnhub" when string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase) => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     "stock_info",
                     "news",
                     "market_news",
+                    "market_events",
                     "recommendations",
                     "historical_prices",
                     "stock_actions"
@@ -1972,6 +1995,7 @@ public class StockDataMcpServerTests
                     "stock_info",
                     "news",
                     "market_news",
+                    "market_events",
                     "recommendations"
                 },
                 "alpaca" when string.Equals(tier, "paid", StringComparison.OrdinalIgnoreCase) => new HashSet<string>(StringComparer.OrdinalIgnoreCase)

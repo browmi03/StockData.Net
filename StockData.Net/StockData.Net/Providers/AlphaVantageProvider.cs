@@ -17,7 +17,8 @@ public sealed class AlphaVantageProvider : IStockDataProvider
         "news",
         "historical_prices",
         "stock_actions",
-        "market_news"
+        "market_news",
+        "market_events"
     };
 
     private readonly IAlphaVantageClient _client;
