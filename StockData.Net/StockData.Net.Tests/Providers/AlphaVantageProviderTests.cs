@@ -192,6 +192,7 @@ public class AlphaVantageProviderTests
 
         CollectionAssert.AreEquivalent(freeSet.ToArray(), paidSet.ToArray());
         CollectionAssert.Contains(freeSet.ToArray(), "market_news");
+        CollectionAssert.Contains(freeSet.ToArray(), "market_events");
         CollectionAssert.Contains(freeSet.ToArray(), "stock_actions");
     }
 

@@ -16,6 +16,7 @@ public sealed class FinnhubProvider : IStockDataProvider
         "stock_info",
         "news",
         "market_news",
+        "market_events",
         "recommendations"
     };
 
@@ -24,6 +25,7 @@ public sealed class FinnhubProvider : IStockDataProvider
         "stock_info",
         "news",
         "market_news",
+        "market_events",
         "recommendations",
         "historical_prices",
         "stock_actions"

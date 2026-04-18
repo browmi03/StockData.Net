@@ -271,4 +271,14 @@ public class FinnhubProviderTests
         Assert.AreEqual(JsonValueKind.Array, document.RootElement.ValueKind);
         Assert.AreEqual(0, document.RootElement.GetArrayLength());
     }
+
+    [TestMethod]
+    public void GetSupportedDataTypes_ForFreeAndPaid_IncludesMarketEvents()
+    {
+        var freeSet = _provider.GetSupportedDataTypes("free");
+        var paidSet = _provider.GetSupportedDataTypes("paid");
+
+        CollectionAssert.Contains(freeSet.ToArray(), "market_events");
+        CollectionAssert.Contains(paidSet.ToArray(), "market_events");
+    }
 }

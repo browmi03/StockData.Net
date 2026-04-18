@@ -52,7 +52,7 @@ public sealed class AlphaVantageMarketEventsProvider : IMarketEventsProvider
             Description = string.IsNullOrWhiteSpace(item.Summary) ? null : item.Summary,
             EventType = "breaking",
             Category = InferCategory(item.Topics),
-            ImpactLevel = null,
+            ImpactLevel = InferImpactFromSentiment(item.OverallSentimentLabel),
             EventTime = ParseEventTime(item.TimePublished),
             Source = "AlphaVantage",
             SourceUrl = string.IsNullOrWhiteSpace(item.Url) ? null : item.Url,
@@ -60,6 +60,15 @@ public sealed class AlphaVantageMarketEventsProvider : IMarketEventsProvider
             Sentiment = MapSentiment(item.OverallSentimentLabel)
         };
     }
+
+    private static string? InferImpactFromSentiment(string? sentimentLabel) =>
+        sentimentLabel?.Trim() switch
+        {
+            "Bullish" or "Bearish" => "high",
+            "Somewhat-Bullish" or "Somewhat-Bearish" => "medium",
+            "Neutral" => "low",
+            _ => null
+        };
 
     private static string ComputeStableHash(string value)
     {

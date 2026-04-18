@@ -195,9 +195,48 @@ public class StockDataMcpServer
                 .ToArray();
 
             messageParts.Add($"Other provider issues: {string.Join(" ", errorDetails)}");
+
+            if (ex.ProviderErrors.Values.Any(IsAuthenticationFailure))
+            {
+                messageParts.Add("Authentication failed for one or more providers. Verify that your provider API key is configured correctly and has not expired.");
+            }
         }
 
         return string.Join(" ", messageParts);
+    }
+
+    private static bool IsAuthenticationFailure(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException!)
+        {
+            if (current is UnauthorizedAccessException)
+            {
+                return true;
+            }
+
+            if (current is HttpRequestException httpEx
+                && httpEx.StatusCode.HasValue
+                && ((int)httpEx.StatusCode.Value == 401 || (int)httpEx.StatusCode.Value == 403))
+            {
+                return true;
+            }
+
+            var message = current.Message;
+            if (message.Contains("401", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("403", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("unauthorized", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("forbidden", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(current, current.InnerException))
+            {
+                break;
+            }
+        }
+
+        return false;
     }
 
     private object HandleInitialize()
